@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#13202C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Vigie Patrimoine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: carnet d'ordres — bandeau de signaux, filtres par enveloppe, puis lignes triées par urgence */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --sunk:#E3E8EE; --ink:#13202C; --muted:#5A6878; --line:#D3DAE2;
+  --accent:#28468F; --accent-soft:#E2E8F6;
+  --buy:#B0291F; --buy-soft:#F8E0DD; --thumb:#3DBE78; --sell:#14774A; --sell-soft:#DDF1E6; --up:#14774A; --up-soft:#DDF1E6; --down:#B0291F;
+  --warn:#9A5B00; --warn-soft:#F6EAD3; --drop:#7A3FD9; --hig:#0E7490; --gone:#6B5A7E; --gone-soft:#ECE6F2;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E141B; --surface:#161E27; --sunk:#1E2833; --ink:#E4EAF0; --muted:#93A1B0; --line:#2A3542;
+  --accent:#8EA8EC; --accent-soft:#1F2B47;
+  --buy:#F08A80; --buy-soft:#3A1A17; --thumb:#8FE3B5; --sell:#5FCB93; --sell-soft:#14301F; --up:#5FCB93; --up-soft:#14301F; --down:#F08A80;
+  --warn:#E7B45C; --warn-soft:#352812; --drop:#B48CFF; --hig:#4FC3D9; --gone:#B9A6D2; --gone-soft:#2A2235; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E141B; --surface:#161E27; --sunk:#1E2833; --ink:#E4EAF0; --muted:#93A1B0; --line:#2A3542;
+  --accent:#8EA8EC; --accent-soft:#1F2B47;
+  --buy:#F08A80; --buy-soft:#3A1A17; --thumb:#8FE3B5; --sell:#5FCB93; --sell-soft:#14301F; --up:#5FCB93; --up-soft:#14301F; --down:#F08A80;
+  --warn:#E7B45C; --warn-soft:#352812; --drop:#B48CFF; --hig:#4FC3D9; --gone:#B9A6D2; --gone-soft:#2A2235; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);padding:0 16px;padding-block:12px 84px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin:0;text-transform:uppercase}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.total{text-align:right}
+.total .v{font:500 18px var(--f-num)}
+.total .l{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px}
+/* signaux */
+.signals{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.sig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-align:left;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;gap:2px}
+.sig .n{font:600 20px/1 var(--f-num)}
+.sig .t{font-size:11px;line-height:1.2;color:var(--muted)}
+.sig[data-k="buy"] .n{color:var(--buy)} .sig[data-k="sell"] .n{color:var(--sell)}
+.sig[data-k="buy"][aria-pressed="true"]{border-color:var(--buy);box-shadow:inset 0 0 0 1px var(--buy);background:var(--buy-soft)}
+.sig[data-k="sell"][aria-pressed="true"]{border-color:var(--sell);box-shadow:inset 0 0 0 1px var(--sell);background:var(--sell-soft)}
+.sig[data-k="drop"] .n{color:var(--drop)} .sig[data-k="soonbuy"] .n{color:var(--buy);opacity:.75} .sig[data-k="soonsell"] .n{color:var(--sell);opacity:.75} .sig[data-k="expired"] .n{color:var(--gone)}
+.sig[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+@media (max-width:560px){.signals{grid-template-columns:repeat(3,1fr)}}
+/* enveloppes */
+.envs{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:4px 10px;font:500 13px var(--f-body);cursor:pointer;display:flex;gap:8px;align-items:baseline}
+.chip .num{font-size:12px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"] .num{color:inherit;opacity:.75}
+.chip.reset{border-style:dashed;color:var(--accent);border-color:var(--accent)}
+/* lignes */
+.list{display:flex;flex-direction:column;gap:6px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px 6px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%;position:relative;overflow:hidden}
+.row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--stripe,transparent)}
+.row:focus-visible,.chip:focus-visible,.sig:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.name{font:700 16px/1.15 var(--f-display);font-stretch:85%;display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+.env{font:600 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:4px}
+.code{font:400 11px var(--f-num);color:var(--muted)}
+.stars{font:400 13px/1 var(--f-body);letter-spacing:1px;color:var(--warn);white-space:nowrap}
+.stars .off{color:var(--line)}
+.med{display:inline-flex;align-items:center;gap:3px;font:600 11px var(--f-num);padding:1px 7px 1px 3px;border-radius:999px;white-space:nowrap;color:var(--mc);background:color-mix(in srgb,var(--mc) 15%,transparent)}
+.med svg{width:14px;height:14px;flex:none}
+.med.m-or{--mc:#B8901A}.med.m-argent{--mc:#7D8794}.med.m-bronze{--mc:#A8662E}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .med.m-or{--mc:#E3B93C}:root:not([data-theme="light"]) .med.m-argent{--mc:#B9C2CC}:root:not([data-theme="light"]) .med.m-bronze{--mc:#D08A4E}}
+:root[data-theme="dark"] .med.m-or{--mc:#E3B93C}:root[data-theme="dark"] .med.m-argent{--mc:#B9C2CC}:root[data-theme="dark"] .med.m-bronze{--mc:#D08A4E}
+.conc{display:inline-flex;align-items:center;gap:3px;font:600 10px var(--f-body);letter-spacing:.04em;text-transform:uppercase;padding:1px 6px 1px 4px;border-radius:999px;white-space:nowrap}
+.conc svg{width:12px;height:12px;flex:none}
+.spk{display:inline-flex;align-items:center;gap:3px;font:600 10px var(--f-body);letter-spacing:.04em;text-transform:uppercase;padding:1px 6px 1px 4px;border-radius:999px;white-space:nowrap;color:var(--warn);background:var(--warn-soft);margin-left:4px;vertical-align:middle}
+.spk svg{width:12px;height:12px;flex:none}
+.bx{--bxbg:#efe7ff;--bxfg:#5b21b6;--bxbd:#c4b2f7;display:inline-flex;align-items:center;gap:5px;font:700 12px var(--f-body);letter-spacing:.02em;padding:2px 9px;border-radius:999px;white-space:nowrap;margin-left:6px;vertical-align:middle;color:var(--bxfg);background:var(--bxbg);border:1.5px solid var(--bxbd)}
+.bx.b3,.bx.b4{--bxbg:#e2d3ff;--bxbd:#8b5cf6}.bx.b4{--bxbg:#6d28d9;--bxfg:#fff;--bxbd:#6d28d9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .bx{--bxbg:#34265a;--bxfg:#ddd0ff;--bxbd:#6b52b8}:root:not([data-theme="light"]) .bx.b3{--bxbg:#4a3485;--bxbd:#9b7bf0}:root:not([data-theme="light"]) .bx.b4{--bxbg:#8b5cf6;--bxfg:#fff;--bxbd:#8b5cf6}}
+:root[data-theme="dark"] .bx{--bxbg:#34265a;--bxfg:#ddd0ff;--bxbd:#6b52b8}:root[data-theme="dark"] .bx.b3{--bxbg:#4a3485;--bxbd:#9b7bf0}:root[data-theme="dark"] .bx.b4{--bxbg:#8b5cf6;--bxfg:#fff;--bxbd:#8b5cf6}
+.dcr{display:inline-flex;align-items:center;gap:4px;font:700 12px var(--f-body);padding:2px 9px;border-radius:999px;white-space:nowrap;margin-left:6px;vertical-align:middle;color:#fff;background:#c2410c;border:1.5px solid #c2410c}
+.dcr svg{width:13px;height:13px;flex:none}
+.dcr.conf{background:#b91c1c;border-color:#7f1d1d}
+.bx .g{display:inline-flex;gap:2px}.bx .g i{width:5px;height:12px;border-radius:1px;background:currentColor;opacity:.25}.bx .g i.on{opacity:1}
+.conc.c-eleve{color:var(--down);background:var(--sell-soft);background:color-mix(in srgb,var(--down) 14%,transparent)}
+.conc.c-moyen{color:var(--warn);background:var(--warn-soft)}
+.hq{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
+.hq .perhi{color:var(--down);font-weight:700}
+.hqw{grid-column:1/-1;min-width:0;font-size:11px;line-height:.9;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;line-clamp:5;overflow:hidden}
+.hqw .hq{display:inline;margin:0}.hqw .hq+.hq::before{content:" · "}
+.hq .y{color:var(--up)} .hq .x{color:var(--muted);opacity:.7}
+.price{text-align:right}
+.price .c{font:500 15px/1.2 var(--f-num);display:inline-flex;align-items:center;gap:6px}
+.live{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;color:var(--accent);background:var(--accent-soft);text-decoration:none;flex:none}
+.live:hover{filter:brightness(.92)}.live svg{width:13px;height:13px}
+.price .d{font-size:11px;color:var(--muted)}
+.price .d.stale{color:var(--warn)}
+.price .d .old{font:600 9px var(--f-body);letter-spacing:.04em;text-transform:uppercase;color:var(--warn);background:var(--warn-soft);padding:0 4px;border-radius:3px}
+.price .d.est{color:var(--accent);font-style:italic}
+.pl{font:500 12px var(--f-num)}
+.pos{color:var(--up)} .neg{color:var(--down)}
+.rules{grid-column:1/-1;display:flex;flex-direction:column;gap:2px}
+.rule{display:flex;align-items:baseline;gap:6px;font-size:12px;line-height:1.35}
+.rule .txt{min-width:0}
+.pill{font:600 10px var(--f-body);letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;flex:none;border-radius:999px;white-space:nowrap}
+.p-buy{background:var(--buy-soft);color:var(--buy)} .p-sell{background:var(--sell-soft);color:var(--sell)}
+.p-warn{background:var(--warn-soft);color:var(--warn)} .p-gone{background:var(--gone-soft);color:var(--gone)}
+.p-ok{background:var(--sunk);color:var(--muted)}
+.rule .txt{color:var(--muted)} .rule .txt b{color:var(--ink);font-weight:500}
+.bar{grid-column:1/-1;position:relative;height:38px}
+.bar.two{height:50px}
+.bar .track{position:absolute;left:0;right:0;top:16px;height:4px;border-radius:2px;background:var(--sunk)}
+.bar .zone{position:absolute;top:16px;height:4px}
+.bar .tick{position:absolute;top:11px;width:2px;height:14px;border-radius:1px;transform:translateX(-1px)}
+.bar .tl{position:absolute;font:500 10px var(--f-num);letter-spacing:-.2px;transform:translateX(-50%);white-space:nowrap}
+.bar .tl.r0{top:25px} .bar .tl.r1{top:37px}
+.bar .ok{position:absolute;top:-4px;width:22px;height:22px;z-index:1;transform:translateX(-50%);color:var(--thumb);background:var(--up-soft);border-radius:50%;padding:3px;pointer-events:none}
+.okin{font-size:12px;filter:hue-rotate(0deg)}
+.bar .ok svg{display:block;width:16px;height:16px}
+.bar .now{position:absolute;top:13.5px;width:9px;height:9px;border-radius:50%;background:var(--ink);transform:translateX(-4.5px)}
+.bar .nl{position:absolute;top:-1px;font:600 10px var(--f-num);color:var(--ink);transform:translateX(-50%);white-space:nowrap}
+.readme{margin:28px 0 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 16px}
+.readme summary{cursor:pointer;padding:14px 0;font-weight:600}
+.readme .rd{font-weight:400;color:var(--muted);font-size:12px;margin-left:8px}
+.readme .md{font-size:13px;line-height:1.5;padding-bottom:16px;overflow-x:auto;min-width:0}
+.readme .md h1{font-size:18px}.readme .md h2{font-size:16px;margin-top:22px}.readme .md h3{font-size:14px}
+.readme .md table{border-collapse:collapse;font-size:12px;margin:8px 0;display:block;overflow-x:auto}
+.readme .md th,.readme .md td{border:1px solid var(--line);padding:3px 6px;text-align:left}
+.readme .md code{background:var(--sunk);border-radius:4px;padding:0 3px;font-size:12px}
+.readme .md pre{background:var(--sunk);padding:8px;border-radius:8px;overflow-x:auto}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px 20px;text-align:center;color:var(--muted)}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--accent);color:var(--surface);border:0;border-radius:999px;padding:14px 20px;font:600 15px var(--f-body);cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+/* feuille d'édition */
+.scrim{position:fixed;inset:0;background:rgba(10,16,24,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+@media (min-width:600px){.scrim{align-items:center}.sheet{border-radius:16px}}
+.sheet h2{font:800 22px var(--f-display);font-stretch:80%;text-transform:uppercase;margin:0}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+legend{font:600 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 4px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+label.full{grid-column:1/-1}
+input,select,textarea{font:15px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
+input[type=number]{font-family:var(--f-num)}
+.hint{grid-column:1/-1;font-size:12px;color:var(--muted);margin:0}
+.ana{border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px}
+.ana summary{font:600 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;padding:2px 0}
+.ana .tw{overflow-x:auto;margin:8px 0 4px}
+.ana table{border-collapse:collapse;font:400 12px var(--f-num);width:100%;min-width:320px}
+.ana th,.ana td{padding:3px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.ana th:first-child,.ana td:first-child{text-align:left;color:var(--muted);font-family:var(--f-body)}
+.ana thead th{color:var(--muted);font-weight:600}
+.ana .e{font-style:italic;color:var(--accent)}
+.ana p{margin:6px 0 0;line-height:1.45}
+.ana .k{color:var(--muted)}
+.actions{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.synth{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 12px;overflow-x:auto}
+.synth table{border-collapse:collapse;width:100%;font:400 13px var(--f-num)}
+.synth th,.synth td{padding:4px 6px;text-align:right;white-space:nowrap}
+.synth th{font:600 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.synth td:first-child,.synth th:first-child{text-align:left;font-family:var(--f-body);font-weight:600}
+.synth tr.tot td{border-top:1px solid var(--line);font-weight:600}
+.synth .nc{color:var(--muted);font-size:11px;font-family:var(--f-body)}
+.jour{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:8px 12px;font-size:13px}
+.jour summary{cursor:pointer;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;list-style:none}
+.jour summary::-webkit-details-marker{display:none}
+.jour .jt{font:700 15px/1.2 var(--f-display);font-stretch:85%;text-transform:uppercase;letter-spacing:.02em;color:var(--accent)}
+.jour .jh{font-size:13px;color:var(--ink);font-weight:500}
+.jour .jd{font:400 11px var(--f-num);color:var(--muted);margin-left:auto}
+.jour h3{font:600 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 3px}
+.jour ul{margin:0;padding-left:18px;line-height:1.45}
+.jour li{margin:2px 0}
+.jour .src{font-size:11px;color:var(--muted);margin-top:8px}
+.jour .src a{color:var(--accent)}
+.jour .rk{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--f-body);padding:2px 8px;border-radius:999px;white-space:nowrap}
+.jour .rk.r0{color:var(--up);background:var(--up-soft)} .jour .rk.r1{color:var(--warn);background:var(--warn-soft)} .jour .rk.r2{color:var(--down);background:var(--buy-soft)}
+.jour .rk .g{display:inline-flex;gap:2px}.jour .rk .g i{width:5px;height:10px;border-radius:1px;background:currentColor;opacity:.25}.jour .rk .g i.on{opacity:1}
+.spec{margin-top:8px}.spec .sw{overflow-x:auto}
+.spec table.st{border-collapse:collapse;font-size:12px;width:100%;min-width:560px}
+.spec table.st th{font:600 10px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.spec table.st th:first-child,.spec table.st td:first-child{text-align:left}
+.spec table.st td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--f-num);white-space:nowrap}
+.spec table.st td:first-child{font-family:var(--f-body);font-weight:600}
+.spec .in{font:500 10px var(--f-body);color:var(--accent);margin-left:4px}
+.spec .pp{display:inline-flex;gap:2px;vertical-align:middle;margin-left:4px}.spec .pp i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.2}.spec .pp i.on{opacity:1}
+.spec .nb{color:var(--down)}.spec .nr{color:var(--up)}
+.jour table.rt{border-collapse:collapse;font-size:12px;margin-top:2px}
+.jour table.rt td{padding:2px 8px 2px 0;vertical-align:top}
+.jour table.rt td.p{font:600 12px var(--f-num);text-align:right;white-space:nowrap}
+.jour .old{font:600 9px var(--f-body);letter-spacing:.04em;text-transform:uppercase;color:var(--warn);background:var(--warn-soft);padding:0 4px;border-radius:3px}
+.btn{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:10px 16px;font:600 14px var(--f-body);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.danger{color:var(--sell);border-color:var(--sell)}
+.err{color:var(--sell);font-size:13px}
+@media (prefers-reduced-motion:no-preference){.row{transition:border-color .15s}.row:hover{border-color:var(--muted)}}
+
+.login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}
+.loginbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:420px;width:100%;display:grid;gap:10px}
+.loginbox h2{margin:0}.loginbox p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+.loginbox label{display:grid;gap:4px;font-size:13px}.loginbox input{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.loginbox button{font:inherit;font-weight:600;padding:10px;border:0;border-radius:8px;background:var(--ink);color:var(--surface);cursor:pointer}
+.loginbox .err{color:var(--down);font-size:13px}
+.syncbar{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0 24px}
+.syncbar button{font:inherit;background:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted);cursor:pointer}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Vigie Patrimoine</h1>
+      <div class="sub" id="today"></div>
+    </div>
+    <div class="total"><div class="l">Valorisation suivie</div><div class="v" id="total">—</div><div class="pl" id="totalpl"></div><div class="pl" id="perm"></div></div>
+  </header>
+  <div class="banner" id="banner" hidden></div>
+  <div class="synth" id="synth"></div>
+  <div id="jour"></div>
+  <div class="signals" id="signals"></div>
+  <div class="envs" id="types"></div>
+  <div class="envs" id="envs"></div>
+  <div class="envs" id="divs"></div>
+  <div class="list" id="list"><div class="empty">Chargement des lignes…</div></div>
+  <details class="readme" id="readme" hidden><summary>Règles et fonctionnement (README)<span class="rd" id="readmeDate"></span></summary><div class="md" id="readmeBody"></div></details>
+</div>
+<div class="syncbar"><span id="syncEtat">…</span><button type="button" onclick="vigieSynchro()">Synchroniser</button><button type="button" onclick="vigieDeconnexion()">Se déconnecter</button></div>
+<div id="sheetHost"></div>
+
+<script src="stockage.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script>
+const ENVS=["PEA","Assurance vie","PER","PEE","CTO"];
+const SOON_DAYS=15, NEAR_PCT=0.02, STALE_DAYS=7;
+const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en dessous)
+const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
+const TYPES=["Actions","ETF","Fonds"];
+const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":l.higgons?"Actions":"ETF");
+let spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterType="Actions", db=null, coll=null, editing=null;
+
+const $=s=>document.querySelector(s);
+const eur1=v=>eur(v,1);
+const eur=(v,d=2)=>v==null||isNaN(v)?"—":v.toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d})+" €";
+const pct=v=>(v>0?"+":"")+(v*100).toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1})+" %";
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const TODAY=iso(new Date());
+const days=(a,b)=>Math.round((new Date(b+"T12:00")-new Date(a+"T12:00"))/864e5);
+const fdate=s=>s?new Date(s+"T12:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"2-digit"}):"";
+const n=v=>(v===""||v==null||isNaN(+v))?null:+v;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---- moteur de règles : prix cible + date limite ---- */
+function evaluate(l){
+  const c=n(l.cours), out=[]; let rank=4;
+  const a=l.achat||{}, v=l.vente||{};
+  const hasRule=n(a.prix)!=null||n(v.objectif)!=null||n(v.stop)!=null;
+  if(c==null||!hasRule){return {rank:5,rules:[{cls:"p-ok",tag:"À configurer",txt:c==null?"Saisis le cours actuel":"Ajoute un seuil d'achat ou de vente",k:null}]};}
+  const left=d=>d?days(TODAY,d):null;
+  if(n(a.prix)!=null){
+    const p=+a.prix, dl=left(a.avant), dist=(c-p)/c;
+    let r;
+    if(n(l.pru)!=null) r={cls:"p-ok",tag:"Achat fait",k:null,rk:3,txt:`Seuil d'achat <b>${eur1(p)}</b> · arbitrage déjà fait (PRU ${eur(+l.pru)})`};
+    else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
+    else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}`};
+    else{
+      const soon=dl!=null&&dl<=SOON_DAYS, near=(c-p)/p<NEAR_PCT; // écart mesuré par rapport au seuil, comme la routine
+      r={cls:soon||near?"p-warn":"p-ok",tag:soon?"Échéance proche":near?"Seuil proche":"Achat en veille",k:soon||near?"soonbuy":null,rk:soon||near?2:3,
+         txt:`Achat ≤ <b>${eur1(p)}</b> · encore ${pct(-dist).replace("-","−")}${dl!=null?` · ${dl} j restants (${fdate(a.avant)})`:""}`};
+    }
+    out.push(r);
+  }
+  if(n(v.objectif)!=null||n(v.stop)!=null){
+    const o=n(v.objectif), s=n(v.stop), dl=left(v.avant);
+    let r;
+    // ligne non détenue : la cible de revente est une information, jamais un signal de vente
+    if(!(n(l.qte)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${pct((o-c)/c)} vs cours)`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
+    else if(s!=null&&c<=s) r={cls:"p-sell",tag:"Stop atteint",k:"sell",rk:0,txt:`Cours sous le stop de <b>${eur(s)}</b> — vendre`};
+    else if(o!=null&&c>=o) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
+    else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Cible ${o!=null?`<b>${eur(o)}</b> `:""}non atteinte au ${fdate(v.avant)} — vendre ou prolonger ?`};
+    else{
+      const dist=o!=null?(o-c)/c:null, soon=dl!=null&&dl<=SOON_DAYS, nearO=o!=null&&(o-c)/o<NEAR_PCT, nearS=s!=null&&(c-s)/s<NEAR_PCT, near=nearO||nearS;
+      const stopTxt=s!=null?` · stop ${eur(s)}`:"";
+      r={cls:soon||near?"p-warn":"p-ok",tag:soon?"Échéance proche":nearS?"Stop proche":nearO?"Cible proche":"Vente en veille",k:soon||near?"soonsell":null,rk:soon||near?2:3,
+         txt:`${o!=null?`Cible <b>${eur(o)}</b> · encore ${pct(dist)}`:"Pas de cible"}${stopTxt}${dl!=null?` · ${dl} j restants`:""}`};
+    }
+    out.push(r);
+  }
+  rank=Math.min(...out.map(r=>r.rk));
+  return {rank,rules:out};
+}
+/* ---- note Quality Value (Higgons) : 1 à 5 étoiles ---- */
+function stars(l){
+  const s=n(l.higgons?.note); if(s==null||s<1) return "";
+  const k=Math.min(5,Math.round(s));
+  return `<span class="stars" title="Note Quality Value (Higgons) : ${k}/5" aria-label="Note Higgons ${k} sur 5">${"★".repeat(k)}<span class="off">${"★".repeat(5-k)}</span></span>`;
+}
+function crit(l){
+  const c=l.higgons?.criteres; if(!Array.isArray(c)||!c.length) return "";
+  // PER au-dessus de 12 (critère Higgons) : seul le chiffre passe en rouge
+  const perHi=k=>{const t=esc(k);return /PER|PE /.test(k)?t.replace(/(^|[^\d,])(\d{1,3}(?:,\d+)?)(?![\d,e])/g,(m,a,v)=>parseFloat(v.replace(",","."))>12?`${a}<span class="perhi">${v}</span>`:m):t;};
+  return `<div class="hq">${c.map(x=>`<span class="${x.ok?"y":"x"}">${x.ok?"✓":"✗"} ${perHi(x.k)}</span>`).join(" · ")}${l.higgons.commentaire?` — <i>${esc(l.higgons.commentaire)}</i>`:""}${l.higgons.date?` <span class="x">(${fdate(l.higgons.date)})</span>`:""}</div>`;
+}
+/* ---- médaille dividende : rendement = dividende annuel par action ÷ cours ---- */
+const MEDALS=[[0.06,"or","Or"],[0.04,"argent","Argent"],[0.02,"bronze","Bronze"]]; // ≥ 6 % · ≥ 4 % · ≥ 2 %
+const divYield=l=>{const d=n(l.dividende?.montant),c=n(l.cours);return d!=null&&c?d/c:null;};
+const divYear=l=>{const d=n(l.dividende?.montant),q=n(l.qte);return d!=null&&q>0?d*q:0;};
+function medal(l){
+  const y=divYield(l); if(y==null) return "";
+  const m=MEDALS.find(([t])=>y>=t); if(!m) return "";
+  const d=l.dividende, an=divYear(l);
+  const t=`Médaille ${m[2]} dividende : rendement ${pct(y).replace("+","")} (${eur(+d.montant)} par action et par an${d.estime?", estimé":""}${d.info?" · "+d.info:""})${an?` · ≈ ${eur(an,0)} par an sur ta ligne`:""}`;
+  return `<span class="med m-${m[1]}" title="${esc(t)}" aria-label="${esc(t)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M8 2l3 7M16 2l-3 7" stroke-linecap="round"/><circle cx="12" cy="15" r="6.5" fill="currentColor" fill-opacity=".25"/><path d="M12 11.6l1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z" fill="currentColor" stroke="none"/></svg>${pct(y).replace("+","")}</span>`;
+}
+/* ---- lien vers le cours en direct (Boursorama par défaut, champ « lien » pour forcer une adresse) ---- */
+const BNP_FONDS={"pee-multipar-actions":"https://epargne-retraite-entreprises.bnpparibas/fonds/multipar-actions-europe-bas-carbone/","pee-multimanagers":"https://epargne-retraite-entreprises.bnpparibas/fonds/multimanagers-actions-internationales-dws/","pee-multipar-bnp":"https://epargne-retraite-entreprises.bnpparibas/fonds/multipar-bnp-paribas-horizon-prudent/"};
+function liveUrl(l){
+  if(l.lien) return l.lien;
+  if(BNP_FONDS[l.id]) return BNP_FONDS[l.id];
+  if(l.source&&/^https:\/\//.test(l.source)) return l.source;
+  const c=String(l.code||"").trim(); if(!c||c==="FCPE"||/\s/.test(c)) return null;
+  return typeOf(l)==="Actions"?`https://www.boursorama.com/cours/1rP${encodeURIComponent(c)}/`:`https://www.boursorama.com/bourse/trackers/cours/1rT${encodeURIComponent(c)}/`;
+}
+function live(l){
+  const u=liveUrl(l); if(!u) return "";
+  let host=""; try{host=new URL(u).hostname.replace(/^www\./,"");}catch{return "";}
+  const t=BNP_FONDS[l.id]&&!l.lien?"VL officielle sur le site BNP Paribas":`Cours en direct sur ${host}`;
+  return `<a class="live" href="${esc(u)}" target="_blank" rel="noopener noreferrer" title="${esc(t)}" aria-label="${esc(t)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>`;
+}
+/* ---- données ayant servi à l'analyse (champ « analyse », écrit par Claude depuis le robot de cours) ---- */
+function anaBlock(l){
+  const a=l.analyse, h=l.higgons;
+  if(!a&&!h?.calcul&&!l.achat?.base) return "";
+  const num=(v,d=2)=>v==null||isNaN(v)?"—":Number(v).toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d});
+  const pc=v=>v==null||isNaN(v)?"—":(v*100).toLocaleString("fr-FR",{maximumFractionDigits:1})+" %";
+  let t="";
+  const yrs=a?.annees?Object.keys(a.annees).sort():[], est=a?.estimations?Object.keys(a.estimations).sort():[];
+  if(yrs.length||est.length){
+    const cols=[...yrs,...est];
+    const row=(lab,f,d)=>`<tr><td>${lab}</td>${cols.map(y=>{const isE=est.includes(y);const v=isE?(f==="bpa"?a.estimations[y]:null):a.annees[y]?.[f];return `<td${isE?' class="e"':""}>${num(v,d)}</td>`}).join("")}</tr>`;
+    t=`<div class="tw"><table><thead><tr><th></th>${cols.map(y=>`<th${est.includes(y)?' class="e"':""}>${esc(y)}</th>`).join("")}</tr></thead><tbody>
+      ${row("BPA (€)","bpa",2)}${row("Résultat net (M€)","rn",0)}${row("Fonds propres (M€)","fp",0)}${row("Dette nette (M€)","dn",0)}</tbody></table></div>`;
+  }
+  const r=a?.ratios||{}, p=[];
+  if(r.roe!=null||r.detteFP!=null||r.per!=null) p.push(`<span class="k">ROE</span> ${pc(r.roe)} · <span class="k">dette nette / FP</span> ${pc(r.detteFP)} · <span class="k">PER ${esc(r.perBase||"")}</span> ${num(r.per,1)}`);
+  if(a?.plusHaut12) p.push(`<span class="k">12 mois :</span> plus haut ${num(a.plusHaut12.v)} € (${fdate(a.plusHaut12.d)}) · plus bas ${num(a.plusBas12?.v)} € (${fdate(a.plusBas12?.d)})`);
+  if(a?.consensus?.mediane) p.push(`<span class="k">Analystes :</span> objectif médian ${num(a.consensus.mediane)} € (${a.consensus.nb||"?"} analystes)`);
+  if(h?.calcul) p.push(`<span class="k">Seuil Higgons :</span> ${esc(h.calcul)}`);
+  if(l.achat?.base) p.push(`<span class="k">Seuil d'achat :</span> ${esc(l.achat.base)}`);
+  if(a?.devise&&a.devise!=="EUR") p.push(`<span class="k">Comptes publiés en ${esc(a.devise)} : montants du tableau dans cette devise.</span>`);
+  if(a?.date) p.push(`<span class="k">Relevé du ${fdate(a.date)} · ${esc(a.source||"")}${est.length?" · en italique : estimations des analystes":""}</span>`);
+  return `<details class="ana"><summary>Données de l'analyse</summary>${t}${p.map(x=>`<p>${x}</p>`).join("")}</details>`;
+}
+/* ---- point du jour (marchés et macro-économie) : document « journal/jour » écrit par la tâche de 9h25 ---- */
+let jourOpen=null;
+function renderJour(){
+  const el=$("#jour"), j=jour; if(!el) return;
+  if(!j||!j.date){el.innerHTML="";return;}
+  const today=j.date===TODAY, open=jourOpen??today;
+  const li=a=>Array.isArray(a)&&a.length?`<ul>${a.map(x=>`<li>${typeof x==="string"?esc(x):`<b>${esc(x.nom||"")}</b> — ${esc(x.txt||"")}`}</li>`).join("")}</ul>`:"";
+  const sec=(t,a)=>Array.isArray(a)&&a.length?`<h3>${t}</h3>${li(a)}`:"";
+  const src=Array.isArray(j.sources)&&j.sources.length?`<div class="src">Sources : ${j.sources.map(x=>/^https:\/\//.test(x.u||"")?`<a href="${esc(x.u)}" target="_blank" rel="noopener noreferrer">${esc(x.t||x.u)}</a>`:esc(x.t||"")).join(" · ")}</div>`:"";
+  const r=j.risque, sc=n(r?.score);
+  const rkCls=sc==null?"":sc<=3?"r0":sc<=6?"r1":"r2";
+  const rk=sc==null?"":`<span class="rk ${rkCls}" title="Note de risque de krach sur 10 (grille fixe, pas une prévision)">Risque de krach ${sc}/10 · ${esc(r.niveau||"")}<span class="g">${Array.from({length:10},(_,i)=>`<i class="${i<sc?"on":""}"></i>`).join("")}</span></span>`;
+  const rkT=Array.isArray(r?.criteres)&&r.criteres.length?`<h3>Risque de krach : ${sc}/10${r.date?` (${fdate(r.date)})`:""}</h3><table class="rt">${r.criteres.map(c=>`<tr><td>${esc(c.k||"")}</td><td>${esc(c.valeur||"")}</td><td class="p">${n(c.points)??"—"}/2</td></tr>`).join("")}</table>`:"";
+  el.innerHTML=`<details class="jour" ${open?"open":""}><summary><span class="jt">Point du jour</span>${rk}<span class="jh">${esc(j.titre||"")}</span><span class="jd">${fdate(j.date)}${j.heure?" "+esc(j.heure):""}${today?"":' <span class="old">pas d\'édition aujourd\'hui</span>'}</span></summary>
+    ${rkT}${sec("Macro-économie",j.macro)}${sec("Marchés",j.marches)}${sec("Tes valeurs concernées",j.impacts)}${sec("À surveiller",j.agenda)}${src}
+    <div class="src">Lecture factuelle de l'actualité, pas un conseil d'investissement : les décisions restent liées à tes seuils.</div></details>`;
+  el.querySelector("details").addEventListener("toggle",e=>{jourOpen=e.target.open;});
+}
+/* ---- table « Spéculation » : valeurs très volatiles, note de potentiel de baisse et de rebond court terme (document « journal/speculation ») ---- */
+function renderSpec(){
+  const el=$("#spec"), d=spec; if(!el) return;
+  if(!d||!Array.isArray(d.valeurs)||!d.valeurs.length){el.innerHTML="";return;}
+  const pp=(v,c)=>`<span class="${c}">${v}/5<span class="pp">${Array.from({length:5},(_,i)=>`<i class="${i<v?"on":""}"></i>`).join("")}</span></span>`;
+  const pc=x=>x==null?"—":(x>0?"+":"")+Math.round(x*100)+" %";
+  const ec=v=>(+v.noteRebond||0)-(+v.noteBaisse||0);
+  const rows=[...d.valeurs].sort((a,b)=>ec(b)-ec(a)||(+b.noteRebond||0)-(+a.noteRebond||0)).map(v=>{
+    const tb=(v.critBaisse||[]).join(" · ")||"aucun critère", tr=(v.critRebond||[]).join(" · ")||"aucun critère";
+    const up=n(v.cible)!=null&&n(v.cours)?v.cible/v.cours-1:null;
+    return `<tr><td>${esc(v.nom)}${v.id?'<span class="in">dans la page</span>':""}</td><td>${eur(+v.cours,2)}</td><td>${eur(+v.haut12,2)}</td><td>${pc(v.baisse)}</td><td>${pc(v.vol)}</td><td title="${esc(v.nbAnalystes?v.nbAnalystes+" analystes":"")}">${v.cible?eur(+v.cible,2)+" ("+pc(up)+")":"—"}</td><td title="${esc(tb)}">${pp(+v.noteBaisse||0,"nb")}</td><td title="${esc(tr)}">${pp(+v.noteRebond||0,"nr")}</td><td><b class="${ec(v)>0?"nr":ec(v)<0?"nb":""}">${ec(v)>0?"+":""}${ec(v)}</b></td></tr>`;}).join("");
+  const m=d.methode||{};
+  el.innerHTML=`<details class="jour spec" ${specOpen?"open":""}><summary><span class="jt">Spéculation</span><span class="jh">${d.valeurs.length} valeurs très volatiles · potentiel de baisse et de rebond court terme sur 5</span><span class="jd">${fdate(d.date)}${d.heure?" "+esc(d.heure):""}</span></summary>
+    <div class="sw"><table class="st"><tr><th>Valeur</th><th>Cours</th><th>Haut 12 m</th><th>Depuis haut</th><th>Volat. 6 m</th><th>Cible analystes</th><th>Baisse</th><th>Rebond</th><th>Écart</th></tr>${rows}</table></div>
+    <div class="src">Classé par écart rebond − baisse, du plus élevé au plus faible. Survoler une note pour voir les critères. <b>Baisse</b> : ${esc(m.baisse||"")}. <b>Rebond</b> : ${esc(m.rebond||"")}.</div>
+    <div class="src">${esc(d.source||"")}. Grille fixe, pas une prévision ni un conseil : valeurs spéculatives, perte totale possible.</div></details>`;
+  el.querySelector("details").addEventListener("toggle",e=>{specOpen=e.target.open;});
+}
+/* ---- risque de concentration (client, projet, produit ou pays) ---- */
+/* icône « attention » : ligne présente dans la table Spéculation */
+function spk(l){
+  const v=spec&&Array.isArray(spec.valeurs)?spec.valeurs.find(x=>x.id===l.id):null; if(!v) return "";
+  const t=`Valeur spéculative : potentiel de baisse ${v.noteBaisse}/5, rebond ${v.noteRebond}/5. Perte totale possible.`;
+  return `<span class="spk" title="${esc(t)}" aria-label="${esc(t)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".6" fill="currentColor"/></svg>spéculatif</span>`;
+}
+/* niveau de baisse sur 4 (robot vigie-cours, critères cumulatifs) */
+function bx(l){
+  const b=l.baisse, v=n(b?.niveau); if(!v) return "";
+  const L=["au moins 2 baisses sur les 3 derniers créneaux de tâche","au moins 2 jours de baisse sur les 3 derniers","au moins 2 semaines de baisse sur 3","en baisse sur 52 semaines"];
+  const t=`Baisse niveau ${v}/4 : ${L.slice(0,v).join(" · ")}${b.releve?` (calcul du ${b.releve})`:""}`;
+  return `<span class="bx b${v}" title="${esc(t)}" aria-label="${esc(t)}">↘ ${v}/4<span class="g">${[0,1,2,3].map(i=>`<i class="${i<v?"on":""}"></i>`).join("")}</span></span>`;
+}
+/* décrochage : ligne détenue en gain ≥ +6 % qui sort par le bas de son canal de croissance (robot : 60 séances, −2 écarts-types) */
+const DCR_GAIN=0.06;
+function dcr(l){
+  const t=l.baisse?.tunnel, c=n(l.cours), p=n(l.pru); if(!t||!t.sortie||!(n(l.qte)>0)||p==null||c==null) return "";
+  const g=c/p-1; if(g<DCR_GAIN) return "";
+  const cf=!!t.sousMM200;
+  const tt=`Décrochage${cf?" confirmé":""} : la ligne gagne ${pct(g)} mais le cours passe sous le bas de son canal de croissance (${eur(+t.bas,2)}, tendance ${pct(+t.penteAn)}/an sur ${t.seances} séances)${t.mm200?`${cf?" et sous":", encore au-dessus de"} sa moyenne 200 séances (${eur(+t.mm200,2)})`:""}.`;
+  return `<span class="dcr${cf?" conf":""}" title="${esc(tt)}" aria-label="${esc(tt)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6 4-4 8 8"/><path d="M21 11v6h-6"/></svg>décroche${cf?" · confirmé":""}</span>`;
+}
+function conc(l){
+  const c=l.concentration; if(!c||!c.niveau||c.niveau==="faible") return "";
+  const k=c.niveau==="élevé"?"eleve":"moyen";
+  const t=`Concentration ${c.type||""} ${c.niveau} : ${c.txt||""}`.replace(/\s+/g," ");
+  return `<span class="conc c-${k}" title="${esc(t)}" aria-label="${esc(t)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>${esc(c.type||"client")}</span>`;
+}
+/* ---- fonds PEE : VL officielle vs VL estimée via indice de référence ---- */
+function vlInfo(l){
+  const v=l.vl; if(!v||n(v.valeur)==null||!v.date) return "";
+  if(l.estime&&l.coursDate&&v.date<l.coursDate) return `<div class="d est">estimée · VL off. ${eur(+v.valeur,2)} au ${fdate(v.date)}</div>`;
+  return "";
+}
+/* ---- évolution sur 12 mois glissants : cours actuel vs cours d'il y a un an (champ « an » {cours, date}) ---- */
+function g12(l){
+  const a=n(l.an?.cours), c=n(l.cours); if(l.env!=="PEE"||!(a>0)||c==null) return "";
+  const r=c/a-1;
+  return `<div class="d" title="Cours du ${fdate(l.an.date)} : ${eur(a,2)}">12 mois <span class="pl ${r>=0?"pos":"neg"}">${pct(r)}</span></div>`;
+}
+/* seuil violet : −10 % du PRU, affiché seulement quand la ligne détenue n'est pas en gain de 5 % ou plus (plus de repère « PRU0% » depuis le 20/10/2026) */
+const GAIN_PROTECT=0; // −10% masqué dès que la ligne est en gain (cours ≥ PRU)
+const isProt=l=>false;
+const violet=l=>{const p=n(l.pru);if(p==null||!(n(l.qte)>0))return null;const c=n(l.cours);return c!=null&&c>=p*(1+GAIN_PROTECT)?null:p*0.9;};
+const isDrop=l=>{const c=n(l.cours),v=violet(l);return c!=null&&v!=null&&c<=v;};
+const protSeen=new Set();
+function markProtected(){ // mémorise le cliquet dans la base quand une ligne passe au-delà de +5 %
+  return; // cliquet « protege » supprimé le 20/10/2026
+  if(!coll) return;
+  lines.forEach(l=>{const c=n(l.cours),p=n(l.pru);
+    if(l.protege!==true&&n(l.qte)>0&&p!=null&&c!=null&&c>=p*(1+GAIN_PROTECT)&&!protSeen.has(l.id)){
+      protSeen.add(l.id);coll.doc(l.id).update({protege:true,protegeDate:TODAY}).catch(()=>protSeen.delete(l.id));}});
+}
+const stripe={0:"var(--buy)",1:"var(--gone)",2:"var(--warn)",3:"transparent",5:"var(--line)"};
+
+/* ---- barre de position : stop · seuil d'achat · cours · objectif ---- */
+function bar(l){
+  const c=n(l.cours); if(c==null) return "";
+  const a=n(l.achat?.prix), o=n(l.vente?.objectif), s=n(l.vente?.stop), p=n(l.pru);
+  const m10=violet(l), prot=isProt(l), vlab=prot?"PRU0%":"−10%", hg=n(l.higgons?.seuil)>0?n(l.higgons.seuil):null;
+  const pts=[c,a,o,p,m10,hg].filter(x=>x!=null); if(pts.length<2) return "";
+  const lo=Math.min(...pts)*0.96, hi=Math.max(...pts)*1.04, pos=v=>(v-lo)/(hi-lo)*100, x=v=>pos(v).toFixed(2)+"%";
+  const short=v=>v.toLocaleString("fr-FR",{maximumFractionDigits:v<10?2:v<1000?1:0});
+  let h='<div class="track"></div>';
+  if(a!=null) h+=`<div class="zone" style="left:0;width:${x(a)};background:var(--buy-soft)"></div>`;
+  const thumb=left=>`<div class="ok" style="left:${left}" title="Ligne achetée"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg></div>`;
+  if(o!=null) h+=`<div class="zone" style="left:${x(o)};right:0;background:var(--sell-soft)"></div>`;
+  // repères : un niveau par étiquette, décalés quand deux repères sont trop proches
+  const marks=[["achat",a,"var(--buy)"],...(prot?[]:[["PRU",p,"var(--muted)"]]),[vlab,m10,"var(--drop)"],["cible",o,"var(--sell)"],["H",hg,"var(--hig)"]].filter(m=>m[1]!=null).sort((m,k)=>m[1]-k[1]);
+  // étiquettes : passage sur une 2e ligne quand deux libellés se chevaucheraient (largeur estimée, barre ≈ 360 px)
+  let lastX=-99,lastW=0,row=0,two=false;
+  marks.forEach(([lab,v,col])=>{
+    const px=pos(v);
+    const dash=(lab==="PRU"||lab===vlab)?";background:none;border-left:2px dashed "+col:lab==="H"?";background:none;border-left:2px dotted "+col:"";
+    const ref=p??c, gain=lab==="objectif"&&ref?` · ${pct((v-ref)/ref)}${p==null?" vs cours":""}`:"", m=gain?(p==null?100:72):46;
+    const txt=`${lab} ${lab==="achat"||lab==="H"?v.toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1}):short(v)}${gain}`, w=txt.length*6.2, cx=Math.min(Math.max(px*3.4,m),340-m);
+    row=((cx-lastX)<(w+lastW)/2+8)?1-row:0; lastX=cx; lastW=w; if(row) two=true;
+    h+=`<div class="tick" style="left:${x(v)};background:${col}${dash}"></div><div class="tl r${row}" style="left:clamp(${m}px,${x(v)},calc(100% - ${m}px));color:${col}">${txt}</div>`;
+  });
+;  return `<div class="bar${two?" two":""}" aria-hidden="true">`+h+`<div class="now" style="left:${x(c)}" title="Cours actuel"></div><div class="nl" style="left:clamp(24px,${x(c)},calc(100% - 24px))">${short(c)}</div></div>`;
+}
+
+
+/* étiquettes de la barre : placement réel mesuré, jusqu'à 3 lignes, sans chevauchement */
+function fixBars(){
+  document.querySelectorAll("#list .bar").forEach(b=>{
+    const W=b.getBoundingClientRect().right;
+    const ls=[...b.querySelectorAll(".tl")].map(el=>{el.style.top="25px";el.style.transform="";const r=el.getBoundingClientRect();return {el,a:r.left,z:r.right};}).sort((u,v)=>u.a-v.a);
+    const rows=[[],[],[]];let maxK=0;
+    ls.forEach(o=>{ // ligne libre d'abord ; sinon la ligne où le décalage vers la droite est le plus faible
+      let k=-1,sh=1e9;
+      rows.forEach((R,i)=>{const end=R.reduce((m,[a,z])=>o.a<z+4&&o.z>a-4?Math.max(m,z+4):m,-1e9);const need=end>-1e9?end-o.a:0;if(need<sh-0.5){sh=need;k=i;}});
+      if(o.z+sh>W) sh=Math.max(0,W-o.z);
+      rows[k].push([o.a+sh,o.z+sh]);o.el.style.top=(25+12*k)+"px";if(sh)o.el.style.transform=`translateX(calc(-50% + ${Math.round(sh)}px))`;maxK=Math.max(maxK,k);});
+    b.style.height=(38+12*maxK)+"px";
+  });
+}
+let fixT=null;addEventListener("resize",()=>{clearTimeout(fixT);fixT=setTimeout(fixBars,150);});
+function render(){
+  $("#today").textContent=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const ev=lines.map(l=>({l,e:evaluate(l)}));
+  const DIVMIN={or:0.06,argent:0.04,bronze:0.02};
+  const divOk=l=>{if(!filterDiv)return true;const y=divYield(l);return y!=null&&y>=DIVMIN[filterDiv];};
+  const bxN=l=>n(l.baisse?.niveau)||0;
+  const inScope=({l})=>(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0);
+  // signaux (dans le périmètre type + enveloppe)
+  const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,expired:0};
+  ev.filter(inScope).forEach(({l,e})=>{const ks=new Set(e.rules.map(r=>r.k).filter(Boolean));ks.forEach(k=>{if(k in cnt)cnt[k]++;});if(isDrop(l))cnt.drop++;});
+  const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU, ou PRU si +5 % atteint)",soonbuy:`Proches de l'achat (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,expired:"Délais dépassés"};
+  $("#signals").innerHTML=Object.keys(cnt).map(k=>`<button class="sig" type="button" data-k="${k}" aria-pressed="${filterSig===k}"><span class="n">${cnt[k]}</span><span class="t">${labels[k]}</span></button>`).join("");
+  // types d'actifs + bouton tout réafficher
+  $("#types").innerHTML=TYPES.filter(t=>lines.some(l=>typeOf(l)===t)).map(t=>`<button class="chip" type="button" data-type="${t}" aria-pressed="${filterType===t}">${t} <span class="num">${lines.filter(l=>typeOf(l)===t).length}</span></button>`).join("")+
+    `<button class="chip" type="button" data-type="" aria-pressed="${!filterType}">Tous types <span class="num">${lines.length}</span></button>`+
+    ((filterType||filterEnv||filterSig||filterDiv||filterBx)?`<button class="chip reset" type="button" id="reset">↺ Tout réafficher</button>`:"");
+  // enveloppes
+  const val=l=>(n(l.qte)&&n(l.cours))?l.qte*l.cours:0, lat=l=>(n(l.qte)&&n(l.cours)&&n(l.pru))?l.qte*(l.cours-l.pru):0;
+  const used=ENVS.filter(e=>lines.some(l=>l.env===e));
+  $("#envs").innerHTML=`<button class="chip" type="button" data-env="" aria-pressed="${!filterEnv}">Tout <span class="num">${lines.length}</span></button>`+
+    used.map(e=>{const t=lines.filter(l=>l.env===e).reduce((s,l)=>s+val(l),0);return `<button class="chip" type="button" data-env="${esc(e)}" aria-pressed="${filterEnv===e}">${esc(e)} <span class="num">${t?eur(t,0):lines.filter(l=>l.env===e).length}</span></button>`}).join("");
+  // dividendes : médaille au moins égale au niveau choisi (rendement au cours actuel)
+  const base=lines.filter(l=>(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv));
+  const nDiv=k=>base.filter(l=>{const y=divYield(l);return y!=null&&y>=DIVMIN[k];}).length;
+  $("#divs").innerHTML=`<span style="font:500 13px var(--f-body);color:var(--muted);align-self:center;margin-right:2px">Dividendes</span>`+
+    [["or","Or ≥ 6 %","m-or"],["argent","Argent et + ≥ 4 %","m-argent"],["bronze","Bronze et + ≥ 2 %","m-bronze"]].map(([k,t,c])=>`<button class="chip" type="button" data-div="${k}" aria-pressed="${filterDiv===k}"><span class="med ${c}" style="padding:0 4px;background:none">●</span>${t} <span class="num">${nDiv(k)}</span></button>`).join("")+
+    `<button class="chip" type="button" id="fbx" aria-pressed="${filterBx}" title="Toutes les lignes en baisse, quel que soit le niveau (1 à 4)" style="margin-left:8px"><span style="color:#6d28d9;font-weight:700">↘</span> Baisses <span class="num">${base.filter(l=>bxN(l)>0).length}</span></button>`;
+  const T=lines.reduce((s,l)=>s+val(l),0), L=lines.reduce((s,l)=>s+lat(l),0);
+  $("#total").textContent=T?eur(T,0):"—";
+  // synthèse par enveloppe : valeur (toutes les lignes avec quantité) et plus-value
+  // PEE : sur 12 mois glissants (cours actuel − cours d'il y a un an, champ « an ») ; à défaut de cours à 1 an, depuis le PRU.
+  // Autres enveloppes : plus-value latente depuis le PRU.
+  const base12=l=>{const a=n(l.an?.cours);return l.env==="PEE"&&a>0?a:null;};
+  const agg=ls=>{let v=0,pv=0,cost=0,sans=0,pru=0;ls.forEach(l=>{const q=n(l.qte),c=n(l.cours),a=base12(l),p=n(l.pru);if(!(q>0)||c==null)return;v+=q*c;const b=a??p;if(b!=null){pv+=q*(c-b);cost+=q*b;if(a==null&&l.env==="PEE")pru++;}else sans++;});return {v,pv,cost,sans,pru};};
+  const nc=(e,a)=>[e==="PEE"?"sur 12 mois glissants":"",a.pru?`${a.pru} ligne${a.pru>1?"s":""} depuis le PRU (pas encore de cours à 1 an)`:"",a.sans?`${a.sans} ligne${a.sans>1?"s":""} sans PRU`:""].filter(Boolean).join(" · ");
+  const rowS=(lab,a,cls="",note="")=>`<tr class="${cls}"><td>${lab}</td><td>${eur(a.v,0)}</td><td class="${a.cost?(a.pv>=0?"pos":"neg"):""}">${a.cost?`${a.pv>=0?"+":"−"}${eur(Math.abs(a.pv),0)}`:"—"}</td><td class="${a.cost?(a.pv>=0?"pos":"neg"):""}">${a.cost?pct(a.pv/a.cost):"—"}</td><td class="nc">${note}</td></tr>`;
+  const envRows=used.map(e=>({e,a:agg(lines.filter(l=>l.env===e))})).filter(x=>x.a.v>0);
+  $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowS(esc(x.e),x.a,"",nc(x.e,x.a))).join("")}${rowS("Total",agg(lines),"tot",envRows.some(x=>x.e==="PEE")?"PEE sur 12 mois, le reste depuis le PRU":"")}</tbody></table>`:"";
+  const D=lines.filter(l=>!filterEnv||l.env===filterEnv).reduce((s,l)=>s+divYear(l),0);
+  $("#totalpl").innerHTML=(L?`<span class="${L>=0?"pos":"neg"}">${L>=0?"+":"−"}${eur(Math.abs(L),0)} latents depuis l'achat</span>`:"")+(D?`${L?" · ":""}<span title="Dividendes annuels estimés sur les lignes détenues">≈ ${eur(D,0)}/an de dividendes</span>`:"");
+  // PER moyen du portefeuille (actions détenues, pondéré par la valeur ; moyenne harmonique = valeur totale ÷ bénéfices détenus)
+  {const PER_OBJ=10;let V=0,E=0,k=0,x=0;lines.forEach(l=>{const q=n(l.qte),c=n(l.cours);if(!(q>0)||c==null||l.type==="ETF"||l.env==="PEE")return;const a=l.analyse||{},r=a.ratios||{},b=n(a.estimations?.[r.perBase]);let per=(a.devise||"EUR")==="EUR"&&b?c/b:n(r.per);if(per==null&&!b)return;if(!(per>0)){x++;return;}V+=q*c;E+=q*c/per;k++;});
+   const P=E?V/E:null;$("#perm").innerHTML=P?`<span class="${P<PER_OBJ?"pos":"neg"}" title="PER moyen pondéré des ${k} actions détenues hors PEE (cours actuel ÷ BPA estimé de l'année de référence)${x?` · ${x} exclue${x>1?"s":""} (bénéfice négatif ou inconnu)`:""}">PER moyen ${P.toFixed(1).replace(".",",")}</span> · objectif &lt; ${PER_OBJ}`:"";}
+  // lignes
+  let shown=ev.filter(inScope).filter(({l,e})=>!filterSig||(filterSig==="drop"?isDrop(l):e.rules.some(r=>r.k===filterSig)));
+  // tri dans un même statut : d'abord les non achetées, meilleure affaire en tête (cours le plus bas vs seuil d'achat) ;
+  // puis les déjà achetées (PRU ou quantité), les plus proches de leur objectif de vente en tête
+  const held=l=>n(l.pru)!=null||n(l.qte)>0;
+  const key=({l})=>{const c=n(l.cours);if(c==null)return Infinity;
+    if(held(l)){const o=n(l.vente?.objectif);return o==null?Infinity:(o-c)/o;}
+    const p=n(l.achat?.prix);return p==null?Infinity:(c-p)/p;};
+  const cmp=(x,y)=>x===y?0:x<y?-1:1;
+  // ordre d'affichage : à vendre · à acheter · bientôt à vendre · bientôt à acheter · délai dépassé · en veille · à configurer
+  const grp=e=>{const ks=e.rules.map(r=>r.k);return ks.includes("sell")?0:ks.includes("buy")?1:ks.includes("soonsell")?2:ks.includes("soonbuy")?3:ks.includes("expired")?4:e.rank===5?6:5;};
+  if(filterBx&&!filterDiv) shown.sort((A,B)=>bxN(B.l)-bxN(A.l)||String(A.l.nom).localeCompare(B.l.nom,"fr")); // filtre baisses : niveau le plus élevé en tête
+  if(filterDiv) shown.sort((A,B)=>(divYield(B.l)??0)-(divYield(A.l)??0)); // filtre dividendes : meilleur rendement en tête
+  const gain=l=>{const c=n(l.cours),p=n(l.pru);return n(l.qte)>0&&p&&c!=null&&c>p?c/p-1:null;}; // lignes détenues en plus-value : en tête, meilleur gain d'abord
+  if(!filterDiv&&!filterBx) shown.sort((A,B)=>{const a=gain(A.l),b=gain(B.l);if(a!=null||b!=null)return (b!=null)-(a!=null)||(b??0)-(a??0);return grp(A.e)-grp(B.e)||(held(A.l)-held(B.l))||cmp(key(A),key(B))||String(A.l.nom).localeCompare(B.l.nom,"fr");});
+  if(!lines.length){$("#list").innerHTML=`<div class="empty">Aucune ligne suivie pour l'instant.<br>Ajoute une valeur, un ETF ou un fonds avec ton seuil d'achat ou de revente et une date limite.</div>`;return;}
+  if(!shown.length){$("#list").innerHTML=`<div class="empty">Rien dans ce filtre.</div>`;return;}
+  $("#list").innerHTML=shown.map(({l,e})=>{
+    const c=n(l.cours), stale=l.coursDate&&days(l.coursDate,TODAY)>STALE_DAYS;
+    const pl=(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
+    const drop=isDrop(l);
+    return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':""}>
+      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${stars(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}</div>
+        <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}</div></div>
+      <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
+        <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
+      ${(()=>{const h=crit(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
+      <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}</div>
+      ${bar(l)}
+    </button>`;}).join("");
+  requestAnimationFrame(fixBars);
+}
+
+/* ---- feuille d'édition ---- */
+function openSheet(l){
+  editing=l?{...l,achat:{...(l.achat||{})},vente:{...(l.vente||{})}}:{env:filterEnv||"PEA",achat:{},vente:{},coursDate:TODAY};
+  const g=(o,k)=>o?.[k]??"";
+  $("#sheetHost").innerHTML=`<div class="scrim" id="scrim"><form class="sheet" id="f" novalidate>
+    <h2>${l?"Modifier la ligne":"Nouvelle ligne"}</h2>
+    <fieldset><legend>Support</legend>
+      <label>Enveloppe<select id="f-env">${ENVS.map(e=>`<option ${e===editing.env?"selected":""}>${e}</option>`).join("")}</select></label>
+      <label>Code / ISIN<input id="f-code" value="${esc(g(editing,"code"))}" placeholder="NEX · FR0000044448"></label>
+      <label class="full">Nom<input id="f-nom" value="${esc(g(editing,"nom"))}" placeholder="Nexans, ETF MSCI World, fonds euros…" required></label>
+      <label>Quantité<input id="f-qte" type="number" step="any" inputmode="decimal" value="${g(editing,"qte")}"></label>
+      <label>PRU (€)<input id="f-pru" type="number" step="any" inputmode="decimal" value="${g(editing,"pru")}"></label>
+      <label>Cours actuel (€)<input id="f-cours" type="number" step="any" inputmode="decimal" value="${g(editing,"cours")}"></label>
+      <label>Date du cours<input id="f-cdate" type="date" value="${g(editing,"coursDate")}"></label>
+    </fieldset>
+    <fieldset><legend>Seuil d'achat</legend>
+      <label>Acheter si cours ≤ (€)<input id="f-ap" type="number" step="any" inputmode="decimal" value="${g(editing.achat,"prix")}"></label>
+      <label>Avant le<input id="f-ad" type="date" value="${g(editing.achat,"avant")}"></label>
+    </fieldset>
+    <fieldset><legend>Seuil de revente</legend>
+      <label>Objectif : vendre si ≥ (€)<input id="f-vo" type="number" step="any" inputmode="decimal" value="${g(editing.vente,"objectif")}"></label>
+      <label>Stop : vendre si ≤ (€)<input id="f-vs" type="number" step="any" inputmode="decimal" value="${g(editing.vente,"stop")}"></label>
+      <label class="full">Objectif à atteindre avant le<input id="f-vd" type="date" value="${g(editing.vente,"avant")}"></label>
+      <p class="hint">Passé la date, la ligne passe en « Délai dépassé » pour que tu décides : vendre, prolonger ou changer d'objectif.</p>
+    </fieldset>
+    <label>Dividende annuel (€ par action)<input id="f-div" type="number" step="any" inputmode="decimal" value="${g(editing.dividende,"montant")}"></label>
+    <p class="hint">Médaille : bronze ≥ 2 %, argent ≥ 4 %, or ≥ 6 % de rendement au cours actuel.</p>
+    ${l?anaBlock(l):""}
+    <label>Note<textarea id="f-note" rows="2">${esc(g(editing,"note"))}</textarea></label>
+    <label>Note Quality Value (Higgons)<select id="f-hq"><option value="">—</option>${[1,2,3,4,5].map(k=>`<option value="${k}" ${n(editing.higgons?.note)===k?"selected":""}>${"★".repeat(k)} (${k}/5)</option>`).join("")}</select></label>
+    <div class="err" id="f-err" hidden></div>
+    <div class="actions">
+      <div>${l?`<button class="btn danger" type="button" id="f-del">Supprimer</button>`:""}</div>
+      <div style="display:flex;gap:8px"><button class="btn" type="button" id="f-cancel">Annuler</button><button class="btn primary" type="submit">Enregistrer</button></div>
+    </div></form></div>`;
+  const close=()=>{$("#sheetHost").innerHTML="";editing=null;};
+  $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")close();});
+  $("#f-cancel").onclick=close;
+  const del=$("#f-del");
+  if(del) del.onclick=async()=>{
+    if(del.dataset.armed!=="1"){del.dataset.armed="1";del.textContent="Confirmer la suppression";return;}
+    await removeLine(l.id); close();
+  };
+  // une date de cours à jour quand on change le cours
+  $("#f-cours").addEventListener("input",()=>{$("#f-cdate").value=TODAY;});
+  $("#f").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const v=id=>$(id).value.trim();
+    const {id:_omit,...keep}=editing;
+    const rec={...keep,env:v("#f-env"),code:v("#f-code"),nom:v("#f-nom"),qte:n(v("#f-qte")),pru:n(v("#f-pru")),cours:n(v("#f-cours")),coursDate:v("#f-cdate")||null,
+      achat:{prix:n(v("#f-ap")),avant:v("#f-ad")||null},vente:{objectif:n(v("#f-vo")),stop:n(v("#f-vs")),avant:v("#f-vd")||null},note:v("#f-note"),maj:new Date().toISOString()};
+    const dv=n(v("#f-div"));
+    if(dv==null) delete rec.dividende;
+    else if(dv!==n(editing.dividende?.montant)) rec.dividende={montant:dv,estime:false,date:TODAY,info:"saisi à la main"};
+    const hq=n(v("#f-hq"));
+    if(hq==null) delete rec.higgons;
+    else if(hq!==n(editing.higgons?.note)) rec.higgons={...(editing.higgons||{}),note:hq,manuel:true,date:TODAY};
+    const err=$("#f-err");
+    if(!rec.nom){err.textContent="Donne un nom à la ligne.";err.hidden=false;return;}
+    if(rec.vente.objectif!=null&&rec.vente.stop!=null&&rec.vente.stop>=rec.vente.objectif){err.textContent="Le stop doit être inférieur à l'objectif de vente.";err.hidden=false;return;}
+    try{await saveLine(l?.id,rec);close();}catch(x){err.textContent="Enregistrement impossible : "+(x?.message||x);err.hidden=false;}
+  });
+  setTimeout(()=>$(l?"#f-cours":"#f-nom").focus(),30);
+}
+
+/* ---- stockage ---- */
+const LS="vigie-patrimoine-local";
+const lsLoad=()=>{try{return JSON.parse(localStorage.getItem(LS)||"[]")}catch{return []}};
+const lsSave=()=>{try{localStorage.setItem(LS,JSON.stringify(lines))}catch{}};
+async function saveLine(id,rec){
+  if(coll){const ref=id?coll.doc(id):coll.doc();await ref.set(rec);return;}
+  if(id){lines=lines.map(x=>x.id===id?{...rec,id}:x);}else{lines.push({...rec,id:"l"+Date.now()});}
+  lsSave();render();
+}
+async function removeLine(id){
+  if(coll){await coll.doc(id).delete();return;}
+  lines=lines.filter(x=>x.id!==id);lsSave();render();
+}
+
+/* ---- interactions ---- */
+document.addEventListener("click",e=>{
+  const s=e.target.closest(".sig"); if(s){filterSig=filterSig===s.dataset.k?null:s.dataset.k;render();return;}
+  if(e.target.closest("#reset")){filterType=null;filterEnv=null;filterSig=null;filterDiv=null;filterBx=false;render();return;}
+  if(e.target.closest("#fbx")){filterBx=!filterBx;render();return;}
+  const dv=e.target.closest("[data-div]"); if(dv){filterDiv=filterDiv===dv.dataset.div?null:dv.dataset.div;render();return;}
+  const c=e.target.closest(".chip"); if(c){if("type" in c.dataset)filterType=c.dataset.type||null;else filterEnv=c.dataset.env||null;render();return;}
+  if(e.target.closest("a.live")) return; // le lien s'ouvre sans ouvrir la fiche
+  const r=e.target.closest(".row"); if(r){openSheet(lines.find(x=>x.id===r.dataset.id));return;}
+});
+
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&editing){$("#sheetHost").innerHTML="";editing=null;}});
+
+render();
+setInterval(render,5*60*1000); // le badge « différé » apparaît sans recharger la page
+// page restée ouverte en arrière-plan (téléphone) : au retour, rechargement complet pour ne jamais afficher de données ou de liens périmés
+let hiddenAt=0;
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden"){hiddenAt=Date.now();return;}
+  // au retour après plus d'une minute : on se réabonne à la base (plus de rechargement complet, qui laissait la page vide)
+  if(hiddenAt&&Date.now()-hiddenAt>60*1000&&!editing&&typeof window.subscribe==="function") window.subscribe();
+  render();
+});
+window.addEventListener("pageshow",e=>{if(e.persisted&&typeof window.subscribe==="function") window.subscribe();});
+(async()=>{
+  try{db=await window.claude?.use?.("db");}catch{db=null}
+  if(!db){
+    lines=lsLoad();
+    const b=$("#banner");b.textContent="Synchronisation indisponible ici : les lignes sont gardées seulement dans ce navigateur.";b.hidden=false;
+    render();return;
+  }
+  coll=db.collection("lignes");
+  let unsubs=[], retry=null;
+  window.subscribe=()=>{
+    unsubs.forEach(u=>{try{u&&u();}catch{}}); unsubs=[]; clearTimeout(retry);
+    try{unsubs.push(db.collection("journal").doc("jour").onSnapshot(d=>{jour=d.exists?d.data():null;renderJour();},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("readme").onSnapshot(d=>{const r=d.exists?d.data():null,box=$("#readme");if(!box)return;if(!r||!r.md){box.hidden=true;return;}box.hidden=false;$("#readmeDate").textContent=r.date?`mis à jour le ${fdate(r.date)}`:"";try{$("#readmeBody").innerHTML=window.marked?marked.parse(r.md):`<pre>${esc(r.md)}</pre>`;}catch{$("#readmeBody").innerHTML=`<pre>${esc(r.md)}</pre>`;}},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("speculation").onSnapshot(d=>{spec=d.exists?d.data():null;renderSpec();render();},()=>{}));}catch{}
+    try{unsubs.push(coll.onSnapshot(snap=>{lines=snap.docs.map(d=>({...d.data(),id:d.id}));$("#banner").hidden=true;render();markProtected();},
+      e=>{const b=$("#banner");b.textContent="Connexion à la base perdue ("+(e&&e.code||"?")+"), nouvelle tentative…";b.hidden=false;retry=setTimeout(window.subscribe,3000);}));}catch{retry=setTimeout(window.subscribe,3000);}
+    // garde-fou : si rien n'est arrivé au bout de 6 s, on relance l'abonnement
+    setTimeout(()=>{if(!lines.length) window.subscribe();},6000);
+  };
+  window.subscribe();
+})();
+</script>
+
+</body>
+</html>
