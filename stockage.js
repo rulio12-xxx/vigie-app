@@ -1,6 +1,6 @@
 /* Vigie Patrimoine — stockage GitHub (dépôt privé) qui remplace la base de l'artifact.
    Données : donnees/portefeuille.json du dépôt privé, lu et écrit avec un jeton GitHub personnel
-   (droits « Contents : read and write » sur ce seul dépôt), gardé dans ce navigateur uniquement.
+   (droits « Contents : read and write » et, pour le bouton « Rafraîchir les cours », « Actions : read and write », sur ce seul dépôt), gardé dans ce navigateur uniquement.
    Hors ligne : la dernière copie reçue reste affichée ; les modifications demandent une connexion. */
 (() => {
   const CFG = "vigie-gh", CACHE = "vigie-cache", POLL = 60000;
@@ -108,6 +108,35 @@
     });
   }
 
+  // Relevé manuel : lance le robot (workflow robot.yml) puis resynchronise quand il a fini.
+  // Le jeton doit aussi avoir « Actions : read and write » sur le dépôt.
+  async function relever() {
+    const c = cfg(); if (!c) return;
+    const b = document.getElementById("btnRelever"); const fin = (t) => { if (b) { b.disabled = false; b.textContent = "Rafraîchir les cours"; } etat(t); };
+    if (!navigator.onLine) { etat("hors ligne"); return; }
+    if (b) { b.disabled = true; b.textContent = "Relevé en cours…"; }
+    const api = `https://api.github.com/repos/${c.owner}/${c.repo}/actions/workflows/robot.yml`;
+    const depart = Date.now() - 5000;
+    try {
+      const r = await fetch(`${api}/dispatches`, { method: "POST", headers: { ...entetes(c), "Content-Type": "application/json" }, body: JSON.stringify({ ref: c.branch }) });
+      if (r.status === 403 || r.status === 404) { fin("jeton sans droit « Actions : read and write »"); bandeau("Rafraîchir les cours : ajoute le droit « Actions : read and write » à ton jeton GitHub (même jeton, rien à recoller)."); return; }
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      for (let i = 0; i < 40; i++) {           // jusqu'à 6 min 40
+        await new Promise(ok => setTimeout(ok, 10000));
+        const q = await fetch(`${api}/runs?event=workflow_dispatch&per_page=1`, { headers: entetes(c), cache: "no-store" });
+        const run = q.ok ? (await q.json()).workflow_runs?.[0] : null;
+        if (run && Date.parse(run.created_at) >= depart) {
+          etat(`relevé : ${run.status === "completed" ? "terminé" : "en cours"} (${i * 10 + 10} s)`);
+          if (run.status === "completed") {
+            if (run.conclusion !== "success") { fin(`relevé en échec (${run.conclusion})`); return; }
+            await tirer(true); fin(`cours rafraîchis ${heure(recu)} · robot ${data?.etat?.releve || "?"}`); return;
+          }
+        }
+      }
+      fin("relevé trop long : réessaie la synchronisation dans quelques minutes");
+    } catch (e) { fin(`relevé impossible (${e.message})`); }
+  }
+  window.vigieRelever = () => relever();
   window.vigieDeconnexion = () => { if (confirm("Oublier le jeton et les données sur cet appareil ?")) { localStorage.removeItem(CFG); localStorage.removeItem(CACHE); location.reload(); } };
   window.vigieSynchro = () => synchro();
 

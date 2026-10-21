@@ -229,7 +229,7 @@ input[type=number]{font-family:var(--f-num)}
   <div class="list" id="list"><div class="empty">Chargement des lignes…</div></div>
   <details class="readme" id="readme" hidden><summary>Règles et fonctionnement (README)<span class="rd" id="readmeDate"></span></summary><div class="md" id="readmeBody"></div></details>
 </div>
-<div class="syncbar"><span id="syncEtat">…</span><button type="button" onclick="vigieSynchro()">Synchroniser</button><button type="button" onclick="vigieDeconnexion()">Se déconnecter</button></div>
+<div class="syncbar"><span id="syncEtat">…</span><button type="button" id="btnRelever" onclick="vigieRelever()">Rafraîchir les cours</button><button type="button" onclick="vigieSynchro()">Synchroniser</button><button type="button" onclick="vigieDeconnexion()">Se déconnecter</button></div>
 <div id="sheetHost"></div>
 
 <script src="stockage.js"></script>
