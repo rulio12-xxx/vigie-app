@@ -297,7 +297,7 @@ function evaluate(l){
 function stars(l){
   const s=n(l.higgons?.note); if(s==null||s<1) return "";
   const k=Math.min(5,Math.round(s));
-  return `<span class="stars" title="Note Quality Value (Higgons) : ${k}/5" aria-label="Note Higgons ${k} sur 5">${"★".repeat(k)}<span class="off">${"★".repeat(5-k)}</span></span>`;
+  return `<span class="stars" title="${/^Fonds/.test(l.higgons?.grille||"")?"Note fonds (12 mois face à l'indice)":"Note Quality Value (Higgons)"} : ${k}/5" aria-label="Note Higgons ${k} sur 5">${"★".repeat(k)}<span class="off">${"★".repeat(5-k)}</span></span>`;
 }
 function crit(l){
   const c=l.higgons?.criteres; if(!Array.isArray(c)||!c.length) return "";
