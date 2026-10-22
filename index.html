@@ -295,7 +295,7 @@ function evaluate(l){
 }
 /* ---- note Quality Value (Higgons) : 1 à 5 étoiles ---- */
 /* ordre à cours limité conseillé (robot, règle du 22/10/2026), affiché seulement s'il date du jour */
-const limTxt=a=>{const m=a?.limite;if(!m||n(m.prix)==null||m.date!==TODAY)return "";return ` · <span title="${esc(m.base||"")}">limite conseillée <b>${eur(+m.prix,2)}</b></span>`;};
+const limTxt=a=>{const m=a?.limite;if(!m||n(m.prix)==null||m.date!==TODAY)return "";return ` · <span title="${esc(m.base||"")}">${m.rebond?"rebond après seuil : ":""}limite conseillée <b>${eur(+m.prix,2)}</b>${m.tendance?` (${esc(m.tendance)})`:""}</span>`;};
 function stars(l){
   const s=n(l.higgons?.note); if(s==null||s<1) return "";
   const k=Math.min(5,Math.round(s));
