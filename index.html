@@ -266,11 +266,11 @@ function evaluate(l){
     let r;
     if(n(l.pru)!=null) r={cls:"p-ok",tag:"Achat fait",k:null,rk:3,txt:`Seuil d'achat <b>${eur1(p)}</b> · arbitrage déjà fait (PRU ${eur(+l.pru)})`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
-    else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}`};
+    else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}${limTxt(a)}`};
     else{
       const soon=dl!=null&&dl<=SOON_DAYS, near=(c-p)/p<NEAR_PCT; // écart mesuré par rapport au seuil, comme la routine
       r={cls:soon||near?"p-warn":"p-ok",tag:soon?"Échéance proche":near?"Seuil proche":"Achat en veille",k:soon||near?"soonbuy":null,rk:soon||near?2:3,
-         txt:`Achat ≤ <b>${eur1(p)}</b> · encore ${pct(-dist).replace("-","−")}${dl!=null?` · ${dl} j restants (${fdate(a.avant)})`:""}`};
+         txt:`Achat ≤ <b>${eur1(p)}</b> · encore ${pct(-dist).replace("-","−")}${dl!=null?` · ${dl} j restants (${fdate(a.avant)})`:""}${near?limTxt(a):""}`};
     }
     out.push(r);
   }
@@ -294,6 +294,8 @@ function evaluate(l){
   return {rank,rules:out};
 }
 /* ---- note Quality Value (Higgons) : 1 à 5 étoiles ---- */
+/* ordre à cours limité conseillé (robot, règle du 22/10/2026), affiché seulement s'il date du jour */
+const limTxt=a=>{const m=a?.limite;if(!m||n(m.prix)==null||m.date!==TODAY)return "";return ` · <span title="${esc(m.base||"")}">limite conseillée <b>${eur(+m.prix,2)}</b></span>`;};
 function stars(l){
   const s=n(l.higgons?.note); if(s==null||s<1) return "";
   const k=Math.min(5,Math.round(s));
