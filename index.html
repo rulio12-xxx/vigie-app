@@ -296,6 +296,8 @@ function evaluate(l){
 /* ---- note Quality Value (Higgons) : 1 à 5 étoiles ---- */
 /* ordre à cours limité conseillé (robot, règle du 22/10/2026), affiché seulement s'il date du jour */
 const limTxt=a=>{const m=a?.limite;if(!m||n(m.prix)==null||m.date!==TODAY)return "";return ` · <span title="${esc(m.base||"")}">${m.rebond?"rebond après seuil : ":""}limite conseillée <b>${eur(+m.prix,2)}</b>${m.tendance?` (${esc(m.tendance)})`:""}</span>`;};
+/* ligne détenue sous PRU − 10 % : renfort à cours limité conseillé (robot, règle du 22/10/2026) */
+const renfTxt=l=>{const m=l.renfort;if(!m||n(m.prix)==null||m.date!==TODAY||!(n(l.cours)<=n(m.seuil)))return "";return `<div class="rule"><span class="pill p-buy" style="background:var(--drop);color:#fff">Renforcer ?</span><span class="txt" title="${esc(m.base||"")}">Cours sous PRU − 10 % (<b>${eur(+m.seuil,2)}</b>) · limite conseillée <b>${eur(+m.prix,2)}</b> (${esc(m.tendance||"")})</span></div>`;};
 function stars(l){
   const s=n(l.higgons?.note); if(s==null||s<1) return "";
   const k=Math.min(5,Math.round(s));
@@ -564,7 +566,7 @@ function render(){
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
       ${(()=>{const h=crit(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
-      <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}</div>
+      <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
       ${bar(l)}
     </button>`;}).join("");
   requestAnimationFrame(fixBars);
