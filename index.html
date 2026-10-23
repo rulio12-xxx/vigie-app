@@ -406,6 +406,8 @@ function spk(l){
   return `<span class="spk" title="${esc(t)}" aria-label="${esc(t)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".6" fill="currentColor"/></svg>spéculatif</span>`;
 }
 /* niveau de baisse sur 4 (robot vigie-cours, critères cumulatifs) */
+/* 😈 dérive financière (robot du matin, règle du 23/10/2026) : BPA révisé de plus de −10 % en 90 jours ou perte attendue */
+function drv(l){const d=l.derive;if(!d?.motifs?.length)return "";const t=`Dérive financière (${fdate(d.date)}) : ${d.motifs.join(" · ")}`;return ` <span title="${esc(t)}" aria-label="${esc(t)}" style="cursor:help">😈</span>`;}
 function bx(l){
   const b=l.baisse, v=n(b?.niveau); if(!v) return "";
   const L=["au moins 2 baisses sur les 3 derniers créneaux de tâche","au moins 2 jours de baisse sur les 3 derniers","au moins 2 semaines de baisse sur 3","en baisse sur 52 semaines"];
@@ -564,7 +566,7 @@ function render(){
     const pl=(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
     const drop=isDrop(l);
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':""}>
-      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${stars(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}</div>
+      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${stars(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}</div>
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
