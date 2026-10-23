@@ -260,10 +260,11 @@ function evaluate(l){
   const c=n(l.cours), out=[]; let rank=4;
   const a=l.achat||{}, v=l.vente||{};
   const hasRule=n(a.prix)!=null||n(v.objectif)!=null||n(v.stop)!=null;
+  const dA=n(a.prixDerive)!=null?` <span title="${esc(a.baseDerive||"")}">(😈 abaissé de ${eur1(+a.prix)})</span>`:"", dV=n(v.objectifDerive)!=null?` <span title="${esc(v.baseDerive||"")}">(😈 abaissée de ${eur(+v.objectif)})</span>`:"";
   if(c==null||!hasRule){return {rank:5,rules:[{cls:"p-ok",tag:"À configurer",txt:c==null?"Saisis le cours actuel":"Ajoute un seuil d'achat ou de vente",k:null}]};}
   const left=d=>d?days(TODAY,d):null;
   if(n(a.prix)!=null){
-    const p=+a.prix, dl=left(a.avant), dist=(c-p)/c;
+    const p=+(n(a.prixDerive)??a.prix), dl=left(a.avant), dist=(c-p)/c;
     let r;
     if(n(l.pru)!=null) r={cls:"p-ok",tag:"Achat fait",k:null,rk:3,txt:`Seuil d'achat <b>${eur1(p)}</b> · arbitrage déjà fait (PRU ${eur(+l.pru)})`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
@@ -273,10 +274,11 @@ function evaluate(l){
       r={cls:soon||near?"p-warn":"p-ok",tag:soon?"Échéance proche":near?"Seuil proche":"Achat en veille",k:soon||near?"soonbuy":null,rk:soon||near?2:3,
          txt:`Achat ≤ <b>${eur1(p)}</b> · encore ${pct(-dist).replace("-","−")}${dl!=null?` · ${dl} j restants (${fdate(a.avant)})`:""}${near?limTxt(a):""}`};
     }
+    if(dA&&n(l.pru)==null)r.txt+=dA;
     out.push(r);
   }
   if(n(v.objectif)!=null||n(v.stop)!=null){
-    const o=n(v.objectif), s=n(v.stop), dl=left(v.avant);
+    const o=n(v.objectifDerive)??n(v.objectif), s=n(v.stop), dl=left(v.avant);
     let r;
     // ligne non détenue : la cible de revente est une information, jamais un signal de vente
     if(!(Q(l)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${pct((o-c)/c)} vs cours)`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
@@ -289,6 +291,7 @@ function evaluate(l){
       r={cls:soon||near?"p-warn":"p-ok",tag:soon?"Échéance proche":nearS?"Stop proche":nearO?"Cible proche":"Vente en veille",k:soon||near?"soonsell":null,rk:soon||near?2:3,
          txt:`${o!=null?`Cible <b>${eur(o)}</b> · encore ${pct(dist)}`:"Pas de cible"}${stopTxt}${dl!=null?` · ${dl} j restants`:""}`};
     }
+    if(dV&&o!=null)r.txt+=dV;
     out.push(r);
   }
   rank=Math.min(...out.map(r=>r.rk));
@@ -459,7 +462,7 @@ const stripe={0:"var(--buy)",1:"var(--gone)",2:"var(--warn)",3:"transparent",5:"
 /* ---- barre de position : stop · seuil d'achat · cours · objectif ---- */
 function bar(l){
   const c=n(l.cours); if(c==null) return "";
-  const a=n(l.achat?.prix), o=n(l.vente?.objectif), s=n(l.vente?.stop), p=n(l.pru);
+  const a=n(l.achat?.prixDerive)??n(l.achat?.prix), o=n(l.vente?.objectifDerive)??n(l.vente?.objectif), s=n(l.vente?.stop), p=n(l.pru);
   const m10=violet(l), prot=isProt(l), vlab=prot?"PRU0%":"−10%", hg=n(l.higgons?.seuil)>0?n(l.higgons.seuil):null;
   const pts=[c,a,o,p,m10,hg].filter(x=>x!=null); if(pts.length<2) return "";
   const lo=Math.min(...pts)*0.96, hi=Math.max(...pts)*1.04, pos=v=>(v-lo)/(hi-lo)*100, x=v=>pos(v).toFixed(2)+"%";
@@ -550,8 +553,8 @@ function render(){
   // puis les déjà achetées (PRU ou quantité), les plus proches de leur objectif de vente en tête
   const held=l=>n(l.pru)!=null||n(l.qte)>0;
   const key=({l})=>{const c=n(l.cours);if(c==null)return Infinity;
-    if(held(l)){const o=n(l.vente?.objectif);return o==null?Infinity:(o-c)/o;}
-    const p=n(l.achat?.prix);return p==null?Infinity:(c-p)/p;};
+    if(held(l)){const o=n(l.vente?.objectifDerive)??n(l.vente?.objectif);return o==null?Infinity:(o-c)/o;}
+    const p=n(l.achat?.prixDerive)??n(l.achat?.prix);return p==null?Infinity:(c-p)/p;};
   const cmp=(x,y)=>x===y?0:x<y?-1:1;
   // ordre d'affichage : à vendre · à acheter · bientôt à vendre · bientôt à acheter · délai dépassé · en veille · à configurer
   const grp=e=>{const ks=e.rules.map(r=>r.k);return ks.includes("sell")?0:ks.includes("buy")?1:ks.includes("soonsell")?2:ks.includes("soonbuy")?3:ks.includes("expired")?4:e.rank===5?6:5;};
