@@ -406,7 +406,7 @@ function spk(l){
   return `<span class="spk" title="${esc(t)}" aria-label="${esc(t)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".6" fill="currentColor"/></svg>spéculatif</span>`;
 }
 /* niveau de baisse sur 4 (robot vigie-cours, critères cumulatifs) */
-/* 😈 dérive financière (robot du matin, règle du 23/10/2026) : BPA révisé de plus de −10 % en 90 jours ou perte attendue */
+/* 😈 dérive financière (robot du matin, règle du 23/10/2026) : BPA révisé de plus de −10 % en 90 jours, perte attendue ou dette nette en forte hausse */
 function drv(l){const d=l.derive;if(!d?.motifs?.length)return "";const t=`Dérive financière (${fdate(d.date)}) : ${d.motifs.join(" · ")}`;return ` <span title="${esc(t)}" aria-label="${esc(t)}" style="cursor:help">😈</span>`;}
 function bx(l){
   const b=l.baisse, v=n(b?.niveau); if(!v) return "";
