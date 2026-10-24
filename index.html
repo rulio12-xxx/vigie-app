@@ -69,6 +69,7 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .env{font:600 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:4px}
 .code{font:400 11px var(--f-num);color:var(--muted)}
 .sold{display:inline-block;min-width:16px;padding:0 4px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font:700 12px/16px var(--f-body);text-align:center}
+.hq.memo{color:var(--ink);font-style:italic}
 .stars{font:400 13px/1 var(--f-body);letter-spacing:1px;color:var(--warn);white-space:nowrap}
 .stars .off{color:var(--line)}
 .med{display:inline-flex;align-items:center;gap:3px;font:600 11px var(--f-num);padding:1px 7px 1px 3px;border-radius:999px;white-space:nowrap;color:var(--mc);background:color-mix(in srgb,var(--mc) 15%,transparent)}
@@ -302,6 +303,8 @@ function evaluate(l){
 const limTxt=a=>{const m=a?.limite;if(!m||n(m.prix)==null||m.date!==TODAY)return "";return ` · <span title="${esc(m.base||"")}">${m.rebond?"rebond après seuil : ":""}limite conseillée <b>${eur(+m.prix,2)}</b>${m.tendance?` (${esc(m.tendance)})`:""}</span>`;};
 /* ligne détenue sous PRU − 10 % : renfort à cours limité conseillé (robot, règle du 22/10/2026) */
 const renfTxt=l=>{const m=l.renfort;if(!m||n(m.prix)==null||m.date!==TODAY||!(n(l.cours)<=n(m.seuil)))return "";return `<div class="rule"><span class="pill p-buy" style="background:var(--drop);color:#fff">Renforcer ?</span><span class="txt" title="${esc(m.base||"")}">Cours sous PRU − 10 % (<b>${eur(+m.seuil,2)}</b>) · limite conseillée <b>${eur(+m.prix,2)}</b> (${esc(m.tendance||"")})</span></div>`;};
+/* notes personnelles : le texte écrit entre guillemets dans le champ « note » est affiché dans la vignette */
+function memo(l){const t=String(l.note||"");const m=[...t.matchAll(/"([^"\n]+)"|“([^”\n]+)”/g)].map(x=>(x[1]||x[2]).trim()).filter(Boolean);return m.length?`<div class="hq memo">💬 ${m.map(esc).join(" · ")}</div>`:"";}
 function stars(l){
   const s=n(l.higgons?.note); if(s==null||s<1) return "";
   const k=Math.min(5,Math.round(s));
@@ -573,7 +576,7 @@ function render(){
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
-      ${(()=>{const h=crit(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
+      ${(()=>{const h=crit(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
       <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
       ${bar(l)}
     </button>`;}).join("");
