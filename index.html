@@ -610,7 +610,7 @@ function openSheet(l){
     <p class="hint">Médaille : bronze ≥ 2 %, argent ≥ 4 %, or ≥ 6 % de rendement au cours actuel.</p>
     ${l?anaBlock(l):""}
     <label>Note<textarea id="f-note" rows="2">${esc(g(editing,"note"))}</textarea></label>
-    <label>Note Quality Value (Higgons)<select id="f-hq"><option value="">—</option>${[1,2,3,4,5].map(k=>`<option value="${k}" ${n(editing.higgons?.note)===k?"selected":""}>${"★".repeat(k)} (${k}/5)</option>`).join("")}</select></label>
+    <label>Note Quality Value (Higgons)<select id="f-hq"><option value="">—</option>${[0,1,2,3,4,5].map(k=>`<option value="${k}" ${n(editing.higgons?.note)===k?"selected":""}>${k?"★".repeat(k):"0★"} (${k}/5)</option>`).join("")}</select></label>
     <div class="err" id="f-err" hidden></div>
     <div class="actions">
       <div>${l?`<button class="btn danger" type="button" id="f-del">Supprimer</button>`:""}</div>
@@ -637,7 +637,7 @@ function openSheet(l){
     if(dv==null) delete rec.dividende;
     else if(dv!==n(editing.dividende?.montant)) rec.dividende={montant:dv,estime:false,date:TODAY,info:"saisi à la main"};
     const hq=n(v("#f-hq"));
-    if(hq==null) delete rec.higgons;
+    if(hq==null){} // pas de note choisie : on garde la note existante (avant, une note 0★ était effacée)
     else if(hq!==n(editing.higgons?.note)) rec.higgons={...(editing.higgons||{}),note:hq,manuel:true,date:TODAY};
     const err=$("#f-err");
     if(!rec.nom){err.textContent="Donne un nom à la ligne.";err.hidden=false;return;}
