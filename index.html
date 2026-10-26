@@ -514,9 +514,10 @@ function render(){
   const starN=l=>{const v=n(l.higgons?.note);return v==null?null:Math.round(v);};
   const inScope=({l})=>(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0)&&(!filterStar||starN(l)===filterStar);
   // signaux (dans le périmètre type + enveloppe)
-  const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,expired:0};
-  ev.filter(inScope).forEach(({l,e})=>{const ks=new Set(e.rules.map(r=>r.k).filter(Boolean));ks.forEach(k=>{if(k in cnt)cnt[k]++;});if(isDrop(l))cnt.drop++;});
-  const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU, ou PRU si +5 % atteint)",soonbuy:`Proches de l'achat (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,expired:"Délais dépassés"};
+  const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return !l.vendu&&h>0&&c!=null&&c<=h;};
+  const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,hg:0};
+  ev.filter(inScope).forEach(({l,e})=>{const ks=new Set(e.rules.map(r=>r.k).filter(Boolean));ks.forEach(k=>{if(k in cnt)cnt[k]++;});if(isDrop(l))cnt.drop++;if(isHg(l))cnt.hg++;});
+  const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU, ou PRU si +5 % atteint)",soonbuy:`Proches de l'achat (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,hg:"Sous le seuil Higgons"};
   $("#signals").innerHTML=Object.keys(cnt).map(k=>`<button class="sig" type="button" data-k="${k}" aria-pressed="${filterSig===k}"><span class="n">${cnt[k]}</span><span class="t">${labels[k]}</span></button>`).join("");
   // types d'actifs + bouton tout réafficher
   $("#types").innerHTML=TYPES.filter(t=>lines.some(l=>typeOf(l)===t)).map(t=>`<button class="chip" type="button" data-type="${t}" aria-pressed="${filterType===t}">${t} <span class="num">${lines.filter(l=>typeOf(l)===t).length}</span></button>`).join("")+
@@ -551,7 +552,7 @@ function render(){
   {const PER_OBJ=10;let V=0,E=0,k=0,x=0;lines.forEach(l=>{const q=Q(l),c=n(l.cours);if(!(q>0)||c==null||l.type==="ETF"||l.env==="PEE")return;const a=l.analyse||{},r=a.ratios||{},b=n(a.estimations?.[r.perBase]);let per=(a.devise||"EUR")==="EUR"&&b?c/b:n(r.per);if(per==null&&!b)return;if(!(per>0)){x++;return;}V+=q*c;E+=q*c/per;k++;});
    const P=E?V/E:null;$("#perm").innerHTML=P?`<span class="${P<PER_OBJ?"pos":"neg"}" title="PER moyen pondéré des ${k} actions détenues hors PEE (cours actuel ÷ BPA estimé de l'année de référence)${x?` · ${x} exclue${x>1?"s":""} (bénéfice négatif ou inconnu)`:""}">PER moyen ${P.toFixed(1).replace(".",",")}</span> · objectif &lt; ${PER_OBJ}`:"";}
   // lignes
-  let shown=ev.filter(inScope).filter(({l,e})=>!filterSig||(filterSig==="drop"?isDrop(l):e.rules.some(r=>r.k===filterSig)));
+  let shown=ev.filter(inScope).filter(({l,e})=>!filterSig||(filterSig==="drop"?isDrop(l):filterSig==="hg"?isHg(l):e.rules.some(r=>r.k===filterSig)));
   // tri dans un même statut : d'abord les non achetées, meilleure affaire en tête (cours le plus bas vs seuil d'achat) ;
   // puis les déjà achetées (PRU ou quantité), les plus proches de leur objectif de vente en tête
   const held=l=>n(l.pru)!=null||n(l.qte)>0;
