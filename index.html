@@ -514,7 +514,7 @@ function render(){
   const starN=l=>{const v=n(l.higgons?.note);return v==null?null:Math.round(v);};
   const inScope=({l})=>(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0)&&(!filterStar||starN(l)===filterStar);
   // signaux (dans le périmètre type + enveloppe)
-  const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return !l.vendu&&h>0&&c!=null&&c<=h;};
+  const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return h>0&&c!=null&&c<=h;};
   const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,hg:0};
   ev.filter(inScope).forEach(({l,e})=>{const ks=new Set(e.rules.map(r=>r.k).filter(Boolean));ks.forEach(k=>{if(k in cnt)cnt[k]++;});if(isDrop(l))cnt.drop++;if(isHg(l))cnt.hg++;});
   const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU, ou PRU si +5 % atteint)",soonbuy:`Proches de l'achat (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,hg:"Sous le seuil Higgons"};
