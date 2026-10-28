@@ -381,8 +381,10 @@ function renderJour(){
   const rkCls=sc==null?"":sc<=3?"r0":sc<=6?"r1":"r2";
   const rk=sc==null?"":`<span class="rk ${rkCls}" title="Note de risque de krach sur 10 (grille fixe, pas une prévision)">Risque de krach ${sc}/10 · ${esc(r.niveau||"")}<span class="g">${Array.from({length:10},(_,i)=>`<i class="${i<sc?"on":""}"></i>`).join("")}</span></span>`;
   const rkT=Array.isArray(r?.criteres)&&r.criteres.length?`<h3>Risque de krach : ${sc}/10${r.date?` (${fdate(r.date)})`:""}</h3><table class="rt">${r.criteres.map(c=>`<tr><td>${esc(c.k||"")}</td><td>${esc(c.valeur||"")}</td><td class="p">${n(c.points)??"—"}/2</td></tr>`).join("")}</table>`:"";
+  const bl=j.baisses?.liste||[], num=(v,d=2)=>v==null||isNaN(v)?"—":Number(v).toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d});
+  const bsT=bl.length?`<h3>Plus fortes baisses du ${fdate(j.baisses.date)}</h3><ul>${bl.map(x=>`<li><b>${esc(x.nom||"")}</b> ${num(x.var)} % · ${num(x.cours)} €${x.note!=null?` · ${x.note}★`:""}${n(x.seuil)>0?` · seuil Higgons ${num(x.seuil)} €${x.cours<=x.seuil?" (sous le seuil)":""}`:""}${x.detenu?" · <b>détenue</b>":""}</li>`).join("")}</ul>`:"";
   el.innerHTML=`<details class="jour" ${open?"open":""}><summary><span class="jt">Point du jour</span>${rk}<span class="jh">${esc(j.titre||"")}</span><span class="jd">${fdate(j.date)}${j.heure?" "+esc(j.heure):""}${today?"":' <span class="old">pas d\'édition aujourd\'hui</span>'}</span></summary>
-    ${rkT}${sec("Macro-économie",j.macro)}${sec("Marchés",j.marches)}${sec("Tes valeurs concernées",j.impacts)}${sec("À surveiller",j.agenda)}${src}
+    ${bsT}${rkT}${sec("Macro-économie",j.macro)}${sec("Marchés",j.marches)}${sec("Tes valeurs concernées",j.impacts)}${sec("À surveiller",j.agenda)}${src}
     <div class="src">Lecture factuelle de l'actualité, pas un conseil d'investissement : les décisions restent liées à tes seuils.</div></details>`;
   el.querySelector("details").addEventListener("toggle",e=>{jourOpen=e.target.open;});
 }
