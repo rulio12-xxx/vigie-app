@@ -243,7 +243,7 @@ const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en
 const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
 const TYPES=["Actions","ETF","Fonds"];
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":l.higgons?"Actions":"ETF");
-let spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
+let spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
 const eur1=v=>eur(v,1);
@@ -514,7 +514,8 @@ function render(){
   const divOk=l=>{if(!filterDiv)return true;const y=divYield(l);return y!=null&&y>=DIVMIN[filterDiv];};
   const bxN=l=>n(l.baisse?.niveau)||0;
   const starN=l=>{const v=n(l.higgons?.note);return v==null?null:Math.round(v);};
-  const inScope=({l})=>(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0)&&(!filterStar||starN(l)===filterStar);
+  const isBuy=e=>(e?.rules||[]).some(r=>r.k==="buy"), mine=({l,e})=>Q(l)>0||isBuy(e);
+  const inScope=({l,e})=>(!filterMine||mine({l,e}))&&(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0)&&(!filterStar||starN(l)===filterStar);
   // signaux (dans le périmètre type + enveloppe)
   const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return h>0&&c!=null&&c<=h;};
   const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,hg:0};
@@ -524,7 +525,7 @@ function render(){
   // types d'actifs + bouton tout réafficher
   $("#types").innerHTML=TYPES.filter(t=>lines.some(l=>typeOf(l)===t)).map(t=>`<button class="chip" type="button" data-type="${t}" aria-pressed="${filterType===t}">${t} <span class="num">${lines.filter(l=>typeOf(l)===t).length}</span></button>`).join("")+
     `<button class="chip" type="button" data-type="" aria-pressed="${!filterType}">Tous types <span class="num">${lines.length}</span></button>`+
-    ((filterType||filterEnv||filterSig||filterDiv||filterBx||filterStar)?`<button class="chip reset" type="button" id="reset">↺ Tout réafficher</button>`:"");
+    ((filterType||filterEnv||filterSig||filterDiv||filterBx||filterMine||filterStar)?`<button class="chip reset" type="button" id="reset">↺ Tout réafficher</button>`:"");
   // enveloppes
   const val=l=>(Q(l)&&n(l.cours))?Q(l)*l.cours:0, lat=l=>(Q(l)&&n(l.cours)&&n(l.pru))?Q(l)*(l.cours-l.pru):0;
   const used=ENVS.filter(e=>lines.some(l=>l.env===e));
@@ -536,6 +537,7 @@ function render(){
   $("#divs").innerHTML=`<span style="font:500 13px var(--f-body);color:var(--muted);align-self:center;margin-right:2px">Dividendes</span>`+
     [["or","Or ≥ 6 %","m-or"],["argent","Argent et + ≥ 4 %","m-argent"],["bronze","Bronze et + ≥ 2 %","m-bronze"]].map(([k,t,c])=>`<button class="chip" type="button" data-div="${k}" aria-pressed="${filterDiv===k}"><span class="med ${c}" style="padding:0 4px;background:none">●</span>${t} <span class="num">${nDiv(k)}</span></button>`).join("")+
     `<button class="chip" type="button" id="fbx" aria-pressed="${filterBx}" title="Toutes les lignes en baisse, quel que soit le niveau (1 à 4)" style="margin-left:8px"><span style="color:#6d28d9;font-weight:700">↘</span> Baisses <span class="num">${base.filter(l=>bxN(l)>0).length}</span></button>`+
+    `<button class="chip" type="button" id="fmine" aria-pressed="${filterMine}" title="Lignes détenues et lignes « À acheter »" style="margin-left:8px">🛒 Acheté + à acheter <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&mine(x)).length}</span></button>`+
     [5,4].map(k=>`<button class="chip" type="button" data-star="${k}" aria-pressed="${filterStar===k}" title="Note Higgons ${k}/5"${k===5?' style="margin-left:8px"':''}><span style="color:#b8860b">${"★".repeat(k)}</span> ${k}★ <span class="num">${base.filter(l=>starN(l)===k).length}</span></button>`).join("");
   const T=lines.reduce((s,l)=>s+val(l),0), L=lines.reduce((s,l)=>s+lat(l),0);
   $("#total").textContent=T?eur(T,0):"—";
@@ -670,8 +672,9 @@ async function removeLine(id){
 /* ---- interactions ---- */
 document.addEventListener("click",e=>{
   const s=e.target.closest(".sig"); if(s){filterSig=filterSig===s.dataset.k?null:s.dataset.k;render();return;}
-  if(e.target.closest("#reset")){filterType=null;filterEnv=null;filterSig=null;filterDiv=null;filterBx=false;filterStar=null;render();return;}
+  if(e.target.closest("#reset")){filterType=null;filterEnv=null;filterSig=null;filterDiv=null;filterBx=false;filterMine=false;filterStar=null;render();return;}
   if(e.target.closest("#fbx")){filterBx=!filterBx;render();return;}
+  if(e.target.closest("#fmine")){filterMine=!filterMine;render();return;}
   const st=e.target.closest("[data-star]"); if(st){const k=+st.dataset.star;filterStar=filterStar===k?null:k;render();return;}
   const dv=e.target.closest("[data-div]"); if(dv){filterDiv=filterDiv===dv.dataset.div?null:dv.dataset.div;render();return;}
   const c=e.target.closest(".chip"); if(c){if("type" in c.dataset)filterType=c.dataset.type||null;else filterEnv=c.dataset.env||null;render();return;}
