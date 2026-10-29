@@ -514,7 +514,7 @@ function render(){
   const divOk=l=>{if(!filterDiv)return true;const y=divYield(l);return y!=null&&y>=DIVMIN[filterDiv];};
   const bxN=l=>n(l.baisse?.niveau)||0;
   const starN=l=>{const v=n(l.higgons?.note);return v==null?null:Math.round(v);};
-  const isBuy=e=>(e?.rules||[]).some(r=>r.k==="buy"), mine=({l,e})=>Q(l)>0||isBuy(e);
+  const isBuy=e=>(e?.rules||[]).some(r=>r.k==="buy"), mine=({l})=>Q(l)>0;
   const inScope=({l,e})=>(!filterMine||mine({l,e}))&&(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0)&&(!filterStar||starN(l)===filterStar);
   // signaux (dans le périmètre type + enveloppe)
   const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return h>0&&c!=null&&c<=h;};
@@ -537,8 +537,8 @@ function render(){
   $("#divs").innerHTML=`<span style="font:500 13px var(--f-body);color:var(--muted);align-self:center;margin-right:2px">Dividendes</span>`+
     [["or","Or ≥ 6 %","m-or"],["argent","Argent et + ≥ 4 %","m-argent"],["bronze","Bronze et + ≥ 2 %","m-bronze"]].map(([k,t,c])=>`<button class="chip" type="button" data-div="${k}" aria-pressed="${filterDiv===k}"><span class="med ${c}" style="padding:0 4px;background:none">●</span>${t} <span class="num">${nDiv(k)}</span></button>`).join("")+
     `<button class="chip" type="button" id="fbx" aria-pressed="${filterBx}" title="Toutes les lignes en baisse, quel que soit le niveau (1 à 4)" style="margin-left:8px"><span style="color:#6d28d9;font-weight:700">↘</span> Baisses <span class="num">${base.filter(l=>bxN(l)>0).length}</span></button>`+
-    `<button class="chip" type="button" id="fbuy" aria-pressed="${filterSig==="buy"}" title="Lignes au statut « À acheter »" style="margin-left:8px">🟢 À acheter <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&isBuy(x.e)).length}</span></button>`+
-    `<button class="chip" type="button" id="fmine" aria-pressed="${filterMine}" title="Lignes détenues et lignes « À acheter »" style="margin-left:8px">🛒 Acheté + à acheter <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&mine(x)).length}</span></button>`+
+    `<button class="chip" type="button" id="fbuy" aria-pressed="${filterSig==="buy"}" title="Lignes au statut « À acheter »" style="margin-left:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M2 3h3l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/></svg> À acheter <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&isBuy(x.e)).length}</span></button>`+
+    `<button class="chip" type="button" id="fmine" aria-pressed="${filterMine}" title="Lignes détenues (achetées)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M2 3h3l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M8 11V5h4v6M12 11V7h4v4M16 11V8h3" fill="currentColor" fill-opacity=".35"/></svg> Acheté <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&mine(x)).length}</span></button>`+
     [5,4].map(k=>`<button class="chip" type="button" data-star="${k}" aria-pressed="${filterStar===k}" title="Note Higgons ${k}/5"${k===5?' style="margin-left:8px"':''}><span style="color:#b8860b">${"★".repeat(k)}</span> ${k}★ <span class="num">${base.filter(l=>starN(l)===k).length}</span></button>`).join("");
   const T=lines.reduce((s,l)=>s+val(l),0), L=lines.reduce((s,l)=>s+lat(l),0);
   $("#total").textContent=T?eur(T,0):"—";
