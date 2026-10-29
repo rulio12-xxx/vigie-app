@@ -655,7 +655,12 @@ function openSheet(l){
     const err=$("#f-err");
     if(!rec.nom){err.textContent="Donne un nom à la ligne.";err.hidden=false;return;}
     if(rec.vente.objectif!=null&&rec.vente.stop!=null&&rec.vente.stop>=rec.vente.objectif){err.textContent="Le stop doit être inférieur à l'objectif de vente.";err.hidden=false;return;}
-    try{await saveLine(l?.id,rec);close();}catch(x){err.textContent="Enregistrement impossible : "+(x?.message||x);err.hidden=false;}
+    try{await saveLine(l?.id,rec);
+      // achat saisi (quantité × PRU en hausse) dans une enveloppe avec espèces suivies : on le prend sur les espèces
+      const cost=x=>{const q=x&&!x.vendu?n(x.qte):null,p=x?n(x.pru):null;return q>0&&p>0?q*p:0;};
+      const dlt=Math.round((cost(rec)-(l?.env===rec.env?cost(editing):0))*100)/100, cs=n(especes?.[rec.env]);
+      if(dlt>0.004&&cs!=null&&db){try{await db.collection("journal").doc("especes").update({[rec.env]:Math.round((cs-dlt)*100)/100,date:TODAY});}catch{}}
+      close();}catch(x){err.textContent="Enregistrement impossible : "+(x?.message||x);err.hidden=false;}
   });
   setTimeout(()=>$(l?"#f-cours":"#f-nom").focus(),30);
 }
