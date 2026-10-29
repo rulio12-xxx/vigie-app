@@ -166,6 +166,7 @@ input[type=number]{font-family:var(--f-num)}
 .synth th{font:600 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .synth td:first-child,.synth th:first-child{text-align:left;font-family:var(--f-body);font-weight:600}
 .synth tr.tot td{border-top:1px solid var(--line);font-weight:600}
+.synth tr.cash td{color:var(--muted);font-style:italic}
 .synth .nc{color:var(--muted);font-size:11px;font-family:var(--f-body)}
 .jour{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:8px 12px;font-size:13px}
 .jour summary{cursor:pointer;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;list-style:none}
@@ -243,7 +244,7 @@ const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en
 const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
 const TYPES=["Actions","ETF","Fonds"];
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":l.higgons?"Actions":"ETF");
-let spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
+let especes=null, spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
 const eur1=v=>eur(v,1);
@@ -541,7 +542,7 @@ function render(){
     `<button class="chip" type="button" id="fmine" aria-pressed="${filterMine==="oui"}" title="Lignes détenues (achetées)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M2 3h3l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M8 11V5h4v6M12 11V7h4v4M16 11V8h3" fill="currentColor" fill-opacity=".35"/></svg> Acheté <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&mine(x)).length}</span></button>`+
     [5,4].map(k=>`<button class="chip" type="button" data-star="${k}" aria-pressed="${filterStar===k}" title="Note Higgons ${k}/5"${k===5?' style="margin-left:8px"':''}><span style="color:#b8860b">${"★".repeat(k)}</span> ${k}★ <span class="num">${base.filter(l=>starN(l)===k).length}</span></button>`).join("");
   const T=lines.reduce((s,l)=>s+val(l),0), L=lines.reduce((s,l)=>s+lat(l),0);
-  $("#total").textContent=T?eur(T,0):"—";
+  $("#total").textContent=T?eur(T+(Object.keys(especes||{}).filter(k=>ENVS.includes(k)).reduce((s,k)=>s+(n(especes[k])||0),0)),0):"—";
   // synthèse par enveloppe : valeur (toutes les lignes avec quantité) et plus-value
   // PEE : sur 12 mois glissants (cours actuel − cours d'il y a un an, champ « an ») ; à défaut de cours à 1 an, depuis le PRU.
   // Autres enveloppes : plus-value latente depuis le PRU.
@@ -550,7 +551,10 @@ function render(){
   const nc=(e,a)=>[e==="PEE"?"sur 12 mois glissants":"",a.pru?`${a.pru} ligne${a.pru>1?"s":""} depuis le PRU (pas encore de cours à 1 an)`:"",a.sans?`${a.sans} ligne${a.sans>1?"s":""} sans PRU`:""].filter(Boolean).join(" · ");
   const rowS=(lab,a,cls="",note="")=>`<tr class="${cls}"><td>${lab}</td><td>${eur(a.v,0)}</td><td class="${a.cost?(a.pv>=0?"pos":"neg"):""}">${a.cost?`${a.pv>=0?"+":"−"}${eur(Math.abs(a.pv),0)}`:"—"}</td><td class="${a.cost?(a.pv>=0?"pos":"neg"):""}">${a.cost?pct(a.pv/a.cost):"—"}</td><td class="nc">${note}</td></tr>`;
   const envRows=used.map(e=>({e,a:agg(lines.filter(l=>l.env===e))})).filter(x=>x.a.v>0);
-  $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowS(esc(x.e),x.a,"",nc(x.e,x.a))).join("")}${rowS("Total",agg(lines),"tot",envRows.some(x=>x.e==="PEE")?"PEE sur 12 mois, le reste depuis le PRU":"")}</tbody></table>`:"";
+  const cash=e=>n(especes?.[e])||0, cashT=Object.keys(especes||{}).filter(k=>ENVS.includes(k)).reduce((s,k)=>s+cash(k),0);
+  const rowC=e=>{const c=cash(e);if(!c)return "";const tot=c+(envRows.find(x=>x.e===e)?.a.v||0);return `<tr class="cash"><td>${esc(e)} · espèces</td><td>${eur(c,0)}</td><td>—</td><td>${(c/tot*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} %</td><td class="nc">part du ${esc(e)} (titres + espèces ${eur(tot,0)})${especes.date?` · saisi le ${fdate(especes.date)}`:""}</td></tr>`;};
+  const totA=(()=>{const a=agg(lines);return {...a,v:a.v+cashT};})();
+  $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowS(esc(x.e),x.a,"",nc(x.e,x.a))+rowC(x.e)).join("")}${rowS("Total",totA,"tot",(cashT?`espèces incluses (${eur(cashT,0)}) · `:"")+(envRows.some(x=>x.e==="PEE")?"PEE sur 12 mois, le reste depuis le PRU":""))}</tbody></table>`:"";
   const D=lines.filter(l=>!filterEnv||l.env===filterEnv).reduce((s,l)=>s+divYear(l),0);
   $("#totalpl").innerHTML=(L?`<span class="${L>=0?"pos":"neg"}">${L>=0?"+":"−"}${eur(Math.abs(L),0)} latents depuis l'achat</span>`:"")+(D?`${L?" · ":""}<span title="Dividendes annuels estimés sur les lignes détenues">≈ ${eur(D,0)}/an de dividendes</span>`:"");
   // PER moyen du portefeuille (actions détenues, pondéré par la valeur ; moyenne harmonique = valeur totale ÷ bénéfices détenus)
@@ -710,6 +714,7 @@ window.addEventListener("pageshow",e=>{if(e.persisted&&typeof window.subscribe==
     unsubs.forEach(u=>{try{u&&u();}catch{}}); unsubs=[]; clearTimeout(retry);
     try{unsubs.push(db.collection("journal").doc("jour").onSnapshot(d=>{jour=d.exists?d.data():null;renderJour();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("readme").onSnapshot(d=>{const r=d.exists?d.data():null,box=$("#readme");if(!box)return;if(!r||!r.md){box.hidden=true;return;}box.hidden=false;$("#readmeDate").textContent=r.date?`mis à jour le ${fdate(r.date)}`:"";try{$("#readmeBody").innerHTML=window.marked?marked.parse(r.md):`<pre>${esc(r.md)}</pre>`;}catch{$("#readmeBody").innerHTML=`<pre>${esc(r.md)}</pre>`;}},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("especes").onSnapshot(d=>{especes=d.exists?d.data():null;render();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("speculation").onSnapshot(d=>{spec=d.exists?d.data():null;renderSpec();render();},()=>{}));}catch{}
     try{unsubs.push(coll.onSnapshot(snap=>{lines=snap.docs.map(d=>({...d.data(),id:d.id}));$("#banner").hidden=true;render();markProtected();},
       e=>{const b=$("#banner");b.textContent="Connexion à la base perdue ("+(e&&e.code||"?")+"), nouvelle tentative…";b.hidden=false;retry=setTimeout(window.subscribe,3000);}));}catch{retry=setTimeout(window.subscribe,3000);}
