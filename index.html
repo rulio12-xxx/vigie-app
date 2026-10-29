@@ -537,6 +537,7 @@ function render(){
   $("#divs").innerHTML=`<span style="font:500 13px var(--f-body);color:var(--muted);align-self:center;margin-right:2px">Dividendes</span>`+
     [["or","Or ≥ 6 %","m-or"],["argent","Argent et + ≥ 4 %","m-argent"],["bronze","Bronze et + ≥ 2 %","m-bronze"]].map(([k,t,c])=>`<button class="chip" type="button" data-div="${k}" aria-pressed="${filterDiv===k}"><span class="med ${c}" style="padding:0 4px;background:none">●</span>${t} <span class="num">${nDiv(k)}</span></button>`).join("")+
     `<button class="chip" type="button" id="fbx" aria-pressed="${filterBx}" title="Toutes les lignes en baisse, quel que soit le niveau (1 à 4)" style="margin-left:8px"><span style="color:#6d28d9;font-weight:700">↘</span> Baisses <span class="num">${base.filter(l=>bxN(l)>0).length}</span></button>`+
+    `<button class="chip" type="button" id="fbuy" aria-pressed="${filterSig==="buy"}" title="Lignes au statut « À acheter »" style="margin-left:8px">🟢 À acheter <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&isBuy(x.e)).length}</span></button>`+
     `<button class="chip" type="button" id="fmine" aria-pressed="${filterMine}" title="Lignes détenues et lignes « À acheter »" style="margin-left:8px">🛒 Acheté + à acheter <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&mine(x)).length}</span></button>`+
     [5,4].map(k=>`<button class="chip" type="button" data-star="${k}" aria-pressed="${filterStar===k}" title="Note Higgons ${k}/5"${k===5?' style="margin-left:8px"':''}><span style="color:#b8860b">${"★".repeat(k)}</span> ${k}★ <span class="num">${base.filter(l=>starN(l)===k).length}</span></button>`).join("");
   const T=lines.reduce((s,l)=>s+val(l),0), L=lines.reduce((s,l)=>s+lat(l),0);
@@ -674,6 +675,7 @@ document.addEventListener("click",e=>{
   const s=e.target.closest(".sig"); if(s){filterSig=filterSig===s.dataset.k?null:s.dataset.k;render();return;}
   if(e.target.closest("#reset")){filterType=null;filterEnv=null;filterSig=null;filterDiv=null;filterBx=false;filterMine=false;filterStar=null;render();return;}
   if(e.target.closest("#fbx")){filterBx=!filterBx;render();return;}
+  if(e.target.closest("#fbuy")){filterSig=filterSig==="buy"?null:"buy";render();return;}
   if(e.target.closest("#fmine")){filterMine=!filterMine;render();return;}
   const st=e.target.closest("[data-star]"); if(st){const k=+st.dataset.star;filterStar=filterStar===k?null:k;render();return;}
   const dv=e.target.closest("[data-div]"); if(dv){filterDiv=filterDiv===dv.dataset.div?null:dv.dataset.div;render();return;}

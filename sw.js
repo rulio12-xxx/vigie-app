@@ -1,5 +1,5 @@
 /* Vigie Patrimoine — fonctionnement hors ligne : l'appli (pas les données GitHub) est gardée en cache. */
-const V = "vigie-app-v6";
+const V = "vigie-app-v7";
 const COQUILLE = ["./", "index.html", "stockage.js", "manifest.json", "icon.svg", "icon-192.png",
   "https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(V).then(c => Promise.all(COQUILLE.map(u => c.add(u).catch(() => null)))).then(() => self.skipWaiting())); });
