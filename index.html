@@ -160,6 +160,7 @@ input[type=number]{font-family:var(--f-num)}
 .ana p{margin:6px 0 0;line-height:1.45}
 .ana .k{color:var(--muted)}
 .actions{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.tx{margin-top:8px}.tx summary{cursor:pointer;font:600 13px var(--f-body);padding:4px 0}.tx td.l,.tx th.l{text-align:left}.tx .t-achat{color:var(--buy)}.tx .t-vente{color:var(--sell)}.tx select{font:inherit;margin:4px 0}
 .synth{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 12px;overflow-x:auto}
 .synth table{border-collapse:collapse;width:100%;font:400 13px var(--f-num)}
 .synth th,.synth td{padding:4px 6px;text-align:right;white-space:nowrap}
@@ -225,6 +226,7 @@ input[type=number]{font-family:var(--f-num)}
   </header>
   <div class="banner" id="banner" hidden></div>
   <div class="synth" id="synth"></div>
+  <details class="synth tx" id="txBox" hidden><summary>Journal des transactions <span class="num" id="txN"></span></summary><div id="tx"></div></details>
   <div id="jour"></div>
   <div class="signals" id="signals"></div>
   <div class="envs" id="types"></div>
@@ -247,7 +249,7 @@ const TYPES=["Actions","ETF","Fonds"];
 const isAct=l=>(!l.type||l.type==="Actions")&&l.env!=="PEE"&&l.env!=="Assurance vie"&&!String(l.higgons?.grille||"").startsWith("Fonds")&&!l.fonds;
 const envTot=e=>{if(n(especes?.[e])==null)return 0;let t=0;lines.forEach(x=>{if(x.env===e&&Q(x)>0&&n(x.cours))t+=Q(x)*x.cours;});return t?t+(n(especes?.[e])||0):0;};
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":l.higgons?"Actions":"ETF");
-let especes=null, spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
+let especes=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
 const eur1=v=>eur(v,1);
@@ -403,6 +405,18 @@ function anaBlock(l){
   if(a?.devise&&a.devise!=="EUR") p.push(`<span class="k">Comptes publiés en ${esc(a.devise)} : montants du tableau dans cette devise.</span>`);
   if(a?.date) p.push(`<span class="k">Relevé du ${fdate(a.date)} · ${esc(a.source||"")}${est.length?" · en italique : estimations des analystes":""}</span>`);
   return `<details class="ana"><summary>Données de l'analyse</summary>${t}${p.map(x=>`<p>${x}</p>`).join("")}</details>`;
+}
+/* ---- journal des transactions (document « journal/transactions », règle du 30/10/2026) ---- */
+function renderTx(){
+  const box=$("#txBox"); if(!box) return;
+  const all=(txs?.liste||[]); if(!all.length){box.hidden=true;return;} box.hidden=false;
+  const envs=[...new Set(all.map(t=>t.env).filter(Boolean))];
+  const L=all.filter(t=>!txEnv||t.env===txEnv).slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+  $("#txN").textContent=`(${all.length})`;
+  const fq=v=>v==null?"—":Number(v).toLocaleString("fr-FR",{maximumFractionDigits:5});
+  $("#tx").innerHTML=`<select id="txEnv"><option value="">Toutes les enveloppes</option>${envs.map(e=>`<option ${e===txEnv?"selected":""}>${esc(e)}</option>`).join("")}</select>
+  <table><thead><tr><th class="l">Date</th><th class="l">Ligne</th><th class="l">Env.</th><th class="l">Type</th><th>Qté</th><th>Prix</th><th>Montant</th></tr></thead><tbody>${L.map(t=>`<tr title="${esc(t.source||"")}"><td class="l">${t.date?fdate(t.date):"avant suivi"}</td><td class="l">${esc(t.nom||t.id||"")}</td><td class="l">${esc(t.env||"")}</td><td class="l t-${esc(t.type==="vente"?"vente":t.type==="achat"||t.type==="versement"?"achat":"x")}">${esc(t.type||"")}</td><td>${fq(t.qte)}</td><td>${t.prix!=null?eur(+t.prix):"—"}</td><td>${t.montant!=null?eur(+t.montant):"—"}</td></tr>`).join("")}</tbody></table>`;
+  const sel=$("#txEnv"); if(sel) sel.onchange=()=>{txEnv=sel.value;renderTx();};
 }
 /* ---- point du jour (marchés et macro-économie) : document « journal/jour » écrit par la tâche de 9h25 ---- */
 let jourOpen=null;
@@ -703,9 +717,14 @@ function openSheet(l){
     if(!rec.nom){err.textContent="Donne un nom à la ligne.";err.hidden=false;return;}
     if(rec.vente.objectif!=null&&rec.vente.stop!=null&&rec.vente.stop>=rec.vente.objectif){err.textContent="Le stop doit être inférieur à l'objectif de vente.";err.hidden=false;return;}
     const cr=rec._credit; delete rec._credit;
+    // transaction déduite de la saisie : achat (quantité en hausse, prix = coût ajouté ÷ quantité) ou vente (prix de vente saisi)
+    const tq0=editing.vendu?0:(n(editing.qte)||0), tq1=rec.vendu?0:(n(rec.qte)||0); let tx=null;
+    if(tq1>tq0){const c0=tq0*(n(editing.pru)||0), c1=tq1*(n(rec.pru)||0), px=c1>c0?(c1-c0)/(tq1-tq0):null;tx={date:TODAY,id:l?.id||null,nom:rec.nom,env:rec.env,type:"achat",qte:Math.round((tq1-tq0)*1e5)/1e5,prix:px?Math.round(px*1e4)/1e4:null,montant:px?Math.round((c1-c0)*100)/100:null,source:"saisie page"};}
+    else if(tq1<tq0){const pv2=n(v("#f-pv"));tx={date:TODAY,id:l?.id||null,nom:rec.nom,env:rec.env,type:"vente",qte:Math.round((tq0-tq1)*1e5)/1e5,prix:pv2,montant:pv2?Math.round((tq0-tq1)*pv2*100)/100:null,source:"saisie page"};}
     try{await saveLine(l?.id,rec);
       // achat saisi (quantité × PRU en hausse) dans une enveloppe avec espèces suivies : on le prend sur les espèces
       const cost=x=>{const q=x&&!x.vendu?n(x.qte):null,p=x?n(x.pru):null;return q>0&&p>0?q*p:0;};
+      if(tx&&db){try{await db.collection("journal").doc("transactions").set({...(txs||{}),liste:[...(txs?.liste||[]),tx],maj:TODAY});}catch{}}
       if(cr&&n(especes?.[rec.env])!=null&&db){try{await db.collection("journal").doc("especes").update({[rec.env]:Math.round((n(especes[rec.env])+cr)*100)/100,date:TODAY});}catch{}}
       const dlt=Math.round((cost(rec)-(l?.env===rec.env?cost(editing):0))*100)/100, cs=n(especes?.[rec.env]);
       if(dlt>0.004&&cs!=null&&db){try{await db.collection("journal").doc("especes").update({[rec.env]:Math.round((cs-dlt)*100)/100,date:TODAY});}catch{}}
@@ -768,6 +787,7 @@ window.addEventListener("pageshow",e=>{if(e.persisted&&typeof window.subscribe==
     unsubs.forEach(u=>{try{u&&u();}catch{}}); unsubs=[]; clearTimeout(retry);
     try{unsubs.push(db.collection("journal").doc("jour").onSnapshot(d=>{jour=d.exists?d.data():null;renderJour();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("readme").onSnapshot(d=>{const r=d.exists?d.data():null,box=$("#readme");if(!box)return;if(!r||!r.md){box.hidden=true;return;}box.hidden=false;$("#readmeDate").textContent=r.date?`mis à jour le ${fdate(r.date)}`:"";try{$("#readmeBody").innerHTML=window.marked?marked.parse(r.md):`<pre>${esc(r.md)}</pre>`;}catch{$("#readmeBody").innerHTML=`<pre>${esc(r.md)}</pre>`;}},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("transactions").onSnapshot(d=>{txs=d.exists?d.data():null;renderTx();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("especes").onSnapshot(d=>{especes=d.exists?d.data():null;render();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("speculation").onSnapshot(d=>{spec=d.exists?d.data():null;renderSpec();render();},()=>{}));}catch{}
     try{unsubs.push(coll.onSnapshot(snap=>{lines=snap.docs.map(d=>({...d.data(),id:d.id}));$("#banner").hidden=true;render();markProtected();},
