@@ -489,7 +489,11 @@ function g12(l){
 const GAIN_PROTECT=0; // −10% masqué dès que la ligne est en gain (cours ≥ PRU)
 const isProt=l=>false;
 const violet=l=>{const p=n(l.pru);if(p==null||!(Q(l)>0))return null;const c=n(l.cours);return c!=null&&c>=p*(1+GAIN_PROTECT)?null:p*0.9;};
-const isDrop=l=>{const c=n(l.cours),v=violet(l);return c!=null&&v!=null&&c<=v;};
+const isDropRaw=l=>{const c=n(l.cours),v=violet(l);return c!=null&&v!=null&&c<=v;};
+/* longue baisse en cours (règle du 30/10/2026) : sous la moyenne 200 séances, pente annuelle négative et tendance courte pas encore « remonte » → pas de violet */
+const longDecline=l=>{const t=l.baisse?.tunnel||{};return !!(t.sousMM200&&n(t.penteAn)<0&&l.renfort?.tendance!=="remonte"&&l.achat?.limite?.tendance!=="remonte");};
+const isFalling=l=>isDropRaw(l)&&longDecline(l);
+const isDrop=l=>isDropRaw(l)&&!longDecline(l);
 const protSeen=new Set();
 function markProtected(){ // mémorise le cliquet dans la base quand une ligne passe au-delà de +5 %
   return; // cliquet « protege » supprimé le 20/10/2026
@@ -617,8 +621,8 @@ function render(){
   $("#list").innerHTML=shown.map(({l,e})=>{
     const c=n(l.cours), stale=l.coursDate&&days(l.coursDate,TODAY)>STALE_DAYS;
     const pl=(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
-    const drop=isDrop(l);
-    return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':""}>
+    const drop=isDrop(l), fall=isFalling(l);
+    return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
       <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}</div>
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
