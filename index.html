@@ -329,6 +329,8 @@ function evaluate(l){
       out.push({cls:"p-sell",tag:`Alléger (${k}/3)`,k:"sell",rk:0,txt:`Pari trop gros à +${pal} % : vendre ${k===3?"tout le reste":`${Math.max(1,Math.round(reste))} action(s)`} · tranches de 1/3 à <b>${eur(pr*1.08)}</b>, <b>${eur(pr*1.12)}</b> et <b>${eur(pr*1.16)}</b>`});}
     if(te&&vl>0.05*te) out.push({cls:"p-warn",tag:"Pari trop gros",k:"soonsell",rk:2,txt:`${eur(vl,0)} soit ${(vl/te*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} % du ${esc(l.env)} — plafond 5 % par ligne spéculative`});
   }
+  const gc=l.guetCreux; if(Q(l)>0&&gc?.actif&&n(gc.bas)){const sr=n(gc.seuilRebond)||gc.bas*1.02, up=c>=sr&&gc.basDate!==TODAY;
+    out.push({cls:up?"p-buy":"p-warn",tag:up?"Creux passé : renforcer":"Guet du creux",k:up?"buy":null,rk:up?0:2,txt:`Plus bas suivi <b>${eur(+gc.bas)}</b> (${fdate(gc.basDate)}) · signal de renfort au-dessus de <b>${eur(sr)}</b> (rebond confirmé) · guet depuis le ${fdate(gc.depuis)}`});}
   if(Q(l)>0&&hz==="long"){
     out.forEach(r=>{if(r.tag==="Vendre"){r.tag="Vendre 1/3";r.txt+=" · long terme : vendre un tiers, laisser courir le reste";}});
     const nt=n(l.higgons?.note); if(nt!=null&&nt<=2&&isAct(l)) out.push({cls:"p-warn",tag:"Note dégradée",k:"soonsell",rk:2,txt:`Long terme mais note ${nt}★ : la thèse Higgons ne tient plus — vendre ou passer en court terme ?`});
