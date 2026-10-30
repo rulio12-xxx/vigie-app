@@ -245,6 +245,7 @@ const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en
 const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
 const TYPES=["Actions","ETF","Fonds"];
 const isAct=l=>(!l.type||l.type==="Actions")&&l.env!=="PEE"&&l.env!=="Assurance vie"&&!String(l.higgons?.grille||"").startsWith("Fonds")&&!l.fonds;
+const envTot=e=>{if(n(especes?.[e])==null)return 0;let t=0;lines.forEach(x=>{if(x.env===e&&Q(x)>0&&n(x.cours))t+=Q(x)*x.cours;});return t?t+(n(especes?.[e])||0):0;};
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":l.higgons?"Actions":"ETF");
 let especes=null, spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
 
@@ -272,6 +273,7 @@ function evaluate(l){
     let r;
     if(n(l.pru)!=null) r={cls:"p-ok",tag:"Achat fait",k:null,rk:3,txt:`Seuil d'achat <b>${eur1(p)}</b> · arbitrage déjà fait (PRU ${eur(+l.pru)})`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
+    else if(c<=p&&isAct(l)&&!(n(l.higgons?.note)>2)&&!(a.limite?.date===TODAY&&(a.limite.tendance==="remonte"||a.limite.rebond))) r={cls:"p-warn",tag:"Attendre le rebond",k:"soonbuy",rk:2,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais valeur ${n(l.higgons?.note)??"?"}★ encore en baisse : achat seulement quand le cours remonte (règle des paris)${limTxt(a)}`};
     else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}${limTxt(a)}`};
     else{
       const soon=dl!=null&&dl<=SOON_DAYS, near=(c-p)/p<NEAR_PCT; // écart mesuré par rapport au seuil, comme la routine
@@ -310,6 +312,8 @@ function evaluate(l){
     else if(ech!=null&&ech<=0) r={cls:"p-gone",tag:"6 mois : attendre +3 %",k:null,rk:2,txt:base};
     else{const near=g>=0.18;r={cls:near?"p-warn":"p-ok",tag:near?"Objectif proche":"Court terme",k:near?"soonsell":null,rk:near?2:3,txt:base};}
     out.push(r);
+    if(g<=-0.30) out.push({cls:"p-sell",tag:"Revoir la thèse",k:"sell",rk:0,txt:`Perte ${pct(g)} sur un pari : vérifier les nouvelles et la trésorerie avant de décider (pas de vente automatique)`});
+    const te=envTot(l.env), vl=Q(l)*c; if(te&&vl>0.03*te) out.push({cls:"p-warn",tag:"Pari trop gros",k:"soonsell",rk:2,txt:`${eur(vl,0)} soit ${(vl/te*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} % du ${esc(l.env)} — plafond 3 % par ligne spéculative`});
   }
   if(Q(l)>0&&hz==="long"){
     out.forEach(r=>{if(r.tag==="Vendre"){r.tag="Vendre 1/3";r.txt+=" · long terme : vendre un tiers, laisser courir le reste";}});
