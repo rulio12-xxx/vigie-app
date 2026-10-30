@@ -313,7 +313,10 @@ function evaluate(l){
     else{const near=g>=0.18;r={cls:near?"p-warn":"p-ok",tag:near?"Objectif proche":"Court terme",k:near?"soonsell":null,rk:near?2:3,txt:base};}
     out.push(r);
     if(g<=-0.30) out.push({cls:"p-sell",tag:"Revoir la thèse",k:"sell",rk:0,txt:`Perte ${pct(g)} sur un pari : vérifier les nouvelles et la trésorerie avant de décider (pas de vente automatique)`});
-    const te=envTot(l.env), vl=Q(l)*c; if(te&&vl>0.03*te) out.push({cls:"p-warn",tag:"Pari trop gros",k:"soonsell",rk:2,txt:`${eur(vl,0)} soit ${(vl/te*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} % du ${esc(l.env)} — plafond 3 % par ligne spéculative`});
+    const te=envTot(l.env), vl=Q(l)*c;
+    if(te&&(vl>0.03*te||l.horizon.allege)&&g>=0.08){const pal=g>=0.16?16:g>=0.12?12:8,k={8:1,12:2,16:3}[pal],q0=n(l.horizon.allege?.qte0)||Q(l),reste=Math.max(0,Q(l)-q0*(3-k)/3);
+      out.push({cls:"p-sell",tag:`Alléger (${k}/3)`,k:"sell",rk:0,txt:`Pari trop gros à +${pal} % : vendre ${k===3?"tout le reste":`${Math.max(1,Math.round(reste))} action(s)`} · tranches de 1/3 à <b>${eur(pr*1.08)}</b>, <b>${eur(pr*1.12)}</b> et <b>${eur(pr*1.16)}</b>`});}
+    if(te&&vl>0.03*te) out.push({cls:"p-warn",tag:"Pari trop gros",k:"soonsell",rk:2,txt:`${eur(vl,0)} soit ${(vl/te*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} % du ${esc(l.env)} — plafond 3 % par ligne spéculative`});
   }
   if(Q(l)>0&&hz==="long"){
     out.forEach(r=>{if(r.tag==="Vendre"){r.tag="Vendre 1/3";r.txt+=" · long terme : vendre un tiers, laisser courir le reste";}});
