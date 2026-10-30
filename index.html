@@ -312,9 +312,10 @@ function evaluate(l){
   const hz=l.horizon?.type, pr=n(l.pru);
   if(Q(l)>0&&pr&&hz==="court"&&isAct(l)){
     const g=c/pr-1, ech=l.horizon.date?days(TODAY,new Date(Date.parse(l.horizon.date)+182*864e5).toISOString().slice(0,10)):null;
-    const base=`Court terme : ½ à <b>${eur(pr*1.2)}</b> (+20 %) · reste à <b>${eur(pr*1.3)}</b> (+30 %) · après 6 mois, tout vendre dès <b>${eur(pr*1.03)}</b> (+3 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
+    const nt3=n(l.higgons?.note), oc=n(v.objectifDerive)??n(v.objectif), ob=(nt3!=null&&nt3>=3&&oc&&oc>pr*1.3)?oc:pr*1.3;
+    const base=`Court terme : ½ à <b>${eur(pr*1.2)}</b> (+20 %) · reste à <b>${eur(ob)}</b> (${ob>pr*1.3?`cible ${nt3}★, `:""}${pct(ob/pr-1)}) · après 6 mois, tout vendre dès <b>${eur(pr*1.03)}</b> (+3 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
     let r;
-    if(g>=0.30) r={cls:"p-sell",tag:"Vendre le reste",k:"sell",rk:0,txt:base};
+    if(c>=ob) r={cls:"p-sell",tag:"Vendre le reste",k:"sell",rk:0,txt:base};
     else if(g>=0.20) r={cls:"p-sell",tag:"Vendre la moitié",k:"sell",rk:0,txt:base};
     else if(ech!=null&&ech<=0&&g>=0.03) r={cls:"p-sell",tag:"Tout vendre (+3 %)",k:"sell",rk:0,txt:base};
     else if(ech!=null&&ech<=0) r={cls:"p-gone",tag:"6 mois : attendre +3 %",k:null,rk:2,txt:base};
