@@ -244,6 +244,7 @@ const SOON_DAYS=15, NEAR_PCT=0.02, STALE_DAYS=7;
 const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en dessous)
 const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
 const TYPES=["Actions","ETF","Fonds"];
+const isAct=l=>(!l.type||l.type==="Actions")&&l.env!=="PEE"&&l.env!=="Assurance vie"&&!String(l.higgons?.grille||"").startsWith("Fonds")&&!l.fonds;
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":l.higgons?"Actions":"ETF");
 let especes=null, spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
 
@@ -296,6 +297,23 @@ function evaluate(l){
     }
     if(dV&&o!=null)r.txt+=dV;
     out.push(r);
+  }
+  // horizon de revente (règle du 30/10/2026) : court terme = moitié à +20 %, reste à +30 %, stop −12 %, échéance 3 mois ; long terme = 1/3 à la cible, note dégradée
+  const hz=l.horizon?.type, pr=n(l.pru);
+  if(Q(l)>0&&pr&&hz==="court"&&isAct(l)){
+    const g=c/pr-1, ech=l.horizon.date?days(TODAY,new Date(Date.parse(l.horizon.date)+91*864e5).toISOString().slice(0,10)):null;
+    const base=`Court terme : ½ à <b>${eur(pr*1.2)}</b> (+20 %) · reste à <b>${eur(pr*1.3)}</b> (+30 %) · stop <b>${eur(pr*0.88)}</b> (−12 %)${ech!=null?` · échéance ${ech>0?`dans ${ech} j`:"atteinte"}`:""} · gain ${pct(g)}`;
+    let r;
+    if(g>=0.30) r={cls:"p-sell",tag:"Vendre le reste",k:"sell",rk:0,txt:base};
+    else if(g>=0.20) r={cls:"p-sell",tag:"Vendre la moitié",k:"sell",rk:0,txt:base};
+    else if(g<=-0.12) r={cls:"p-sell",tag:"Stop −12 %",k:"sell",rk:0,txt:base};
+    else if(ech!=null&&ech<=0) r={cls:"p-gone",tag:"Échéance 3 mois",k:"expired",rk:1,txt:base+" — vendre ou passer en long terme ?"};
+    else{const near=g>=0.18||g<=-0.10;r={cls:near?"p-warn":"p-ok",tag:near?(g>0?"Objectif proche":"Stop proche"):"Court terme",k:near?"soonsell":null,rk:near?2:3,txt:base};}
+    out.push(r);
+  }
+  if(Q(l)>0&&hz==="long"){
+    out.forEach(r=>{if(r.tag==="Vendre"){r.tag="Vendre 1/3";r.txt+=" · long terme : vendre un tiers, laisser courir le reste";}});
+    const nt=n(l.higgons?.note); if(nt!=null&&nt<=2&&isAct(l)) out.push({cls:"p-warn",tag:"Note dégradée",k:"soonsell",rk:2,txt:`Long terme mais note ${nt}★ : la thèse Higgons ne tient plus — vendre ou passer en court terme ?`});
   }
   rank=Math.min(...out.map(r=>r.rk));
   return {rank,rules:out};
@@ -555,8 +573,9 @@ function render(){
   const cash=e=>n(especes?.[e])||0, cashT=Object.keys(especes||{}).filter(k=>ENVS.includes(k)).reduce((s,k)=>s+cash(k),0);
   const rowC=e=>{const c=cash(e);if(!c)return "";const tot=c+(envRows.find(x=>x.e===e)?.a.v||0);return `<tr class="cash"><td>${esc(e)} · espèces</td><td>${eur(c,0)}</td><td>—</td><td>${(c/tot*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} %</td><td class="nc">part du ${esc(e)} (titres + espèces ${eur(tot,0)})${especes.date?` · saisi le ${fdate(especes.date)}`:""}</td></tr>`;};
   const rowV=e=>{const vs=n(especes?.versements?.[e]);if(!vs)return "";const tot=cash(e)+(envRows.find(x=>x.e===e)?.a.v||0),g=tot-vs;return `<tr class="cash"><td>${esc(e)} · versé</td><td>${eur(vs,0)}</td><td class="${g>=0?"pos":"neg"}">${g>=0?"+":"−"}${eur(Math.abs(g),0)}</td><td class="${g>=0?"pos":"neg"}">${pct(g/vs)}</td><td class="nc">performance réelle : titres + espèces (${eur(tot,0)}) − versements</td></tr>`;};
+  const rowH=e=>{if(e!=="PEA")return "";const ls=lines.filter(l=>l.env===e&&Q(l)>0&&n(l.cours)),tot=ls.reduce((s,l)=>s+Q(l)*l.cours,0)+cash(e),ct=ls.filter(l=>l.horizon?.type==="court").reduce((s,l)=>s+Q(l)*l.cours,0);if(!tot||!ct)return "";const p=ct/tot;return `<tr class="cash"><td>${esc(e)} · court terme</td><td>${eur(ct,0)}</td><td>—</td><td class="${p>0.2?"neg":""}">${(p*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} %</td><td class="nc">part de la poche court terme dans le PEA (plafond 20 %)${p>0.2?" — <b>au-dessus du plafond</b>":""}</td></tr>`;};
   const totA=(()=>{const a=agg(lines);return {...a,v:a.v+cashT};})();
-  $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowS(esc(x.e),x.a,"",nc(x.e,x.a))+rowC(x.e)+rowV(x.e)).join("")}${rowS("Total",totA,"tot",(cashT?`espèces incluses (${eur(cashT,0)}) · `:"")+(envRows.some(x=>x.e==="PEE")?"PEE sur 12 mois, le reste depuis le PRU":""))}</tbody></table>`:"";
+  $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowS(esc(x.e),x.a,"",nc(x.e,x.a))+rowC(x.e)+rowV(x.e)+rowH(x.e)).join("")}${rowS("Total",totA,"tot",(cashT?`espèces incluses (${eur(cashT,0)}) · `:"")+(envRows.some(x=>x.e==="PEE")?"PEE sur 12 mois, le reste depuis le PRU":""))}</tbody></table>`:"";
   const D=lines.filter(l=>!filterEnv||l.env===filterEnv).reduce((s,l)=>s+divYear(l),0);
   $("#totalpl").innerHTML=(L?`<span class="${L>=0?"pos":"neg"}">${L>=0?"+":"−"}${eur(Math.abs(L),0)} latents depuis l'achat</span>`:"")+(D?`${L?" · ":""}<span title="Dividendes annuels estimés sur les lignes détenues">≈ ${eur(D,0)}/an de dividendes</span>`:"");
   // PER moyen du portefeuille (actions détenues, pondéré par la valeur ; moyenne harmonique = valeur totale ÷ bénéfices détenus)
@@ -609,6 +628,7 @@ function openSheet(l){
       <label>PRU (€)<input id="f-pru" type="number" step="any" inputmode="decimal" value="${g(editing,"pru")}"></label>
       <label>Cours actuel (€)<input id="f-cours" type="number" step="any" inputmode="decimal" value="${g(editing,"cours")}"></label>
       <label>Date du cours<input id="f-cdate" type="date" value="${g(editing,"coursDate")}"></label>
+      <label>Horizon de revente<select id="f-hz"><option value="">—</option><option value="long" ${editing.horizon?.type==="long"?"selected":""}>Long terme (1/3 à la cible)</option><option value="court" ${editing.horizon?.type==="court"?"selected":""}>Court terme (½ à +20 %, reste à +30 %, stop −12 %, 3 mois)</option></select></label>
       <label class="full" style="flex-direction:row;align-items:center;gap:8px"><input id="f-vendu" type="checkbox" style="width:auto" ${editing.vendu?"checked":""}> Vendue : garder la ligne pour mémoire, hors totaux, dividendes et plus-values</label>
     </fieldset>
     <fieldset><legend>Seuil d'achat</legend>
@@ -648,6 +668,7 @@ function openSheet(l){
     const rec={...keep,env:v("#f-env"),code:v("#f-code"),nom:v("#f-nom"),qte:n(v("#f-qte")),pru:n(v("#f-pru")),cours:n(v("#f-cours")),coursDate:v("#f-cdate")||null,
       achat:{prix:n(v("#f-ap")),avant:v("#f-ad")||null},vente:{objectif:n(v("#f-vo")),stop:n(v("#f-vs")),avant:v("#f-vd")||null},note:v("#f-note"),maj:new Date().toISOString()};
     if($("#f-vendu").checked) rec.vendu=editing.vendu||{date:TODAY}; else delete rec.vendu;
+    const hz=v("#f-hz"); if(!hz) delete rec.horizon; else if(hz!==editing.horizon?.type) rec.horizon={type:hz,date:TODAY,auto:false};
     const dv=n(v("#f-div"));
     if(dv==null) delete rec.dividende;
     else if(dv!==n(editing.dividende?.montant)) rec.dividende={montant:dv,estime:false,date:TODAY,info:"saisi à la main"};
