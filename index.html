@@ -268,7 +268,15 @@ function evaluate(l){
   const dA=n(a.prixDerive)!=null?` <span title="${esc(a.baseDerive||"")}">(😈 abaissé de ${eur1(+a.prix)})</span>`:"", dV=n(v.objectifDerive)!=null?` <span title="${esc(v.baseDerive||"")}">(😈 abaissée de ${eur(+v.objectif)})</span>`:"";
   if(c==null||!hasRule){return {rank:5,rules:[{cls:"p-ok",tag:"À configurer",txt:c==null?"Saisis le cours actuel":"Ajoute un seuil d'achat ou de vente",k:null}]};}
   const left=d=>d?days(TODAY,d):null;
-  if(n(a.prix)!=null){
+  if(l.vendu&&n(l.rachat?.prix)!=null){
+    // ligne vendue : rachat (règle du 30/10/2026) = le plus bas de (vente − 15 %, seuil d'achat), note ≥ 3★, pas de 😈, cours qui remonte
+    const p=+l.rachat.prix, nt=n(l.higgons?.note), ok=nt!=null&&nt>=3&&!l.derive?.motifs?.length, up=a.limite?.date===TODAY&&(a.limite.tendance==="remonte"||a.limite.rebond);
+    const t=`Rachat ≤ <b>${eur(p)}</b> · ${esc(l.rachat.base||"")}${!ok?` · bloqué : ${nt==null?"pas de note":nt<3?`note ${nt}★ (< 3★)`:"😈"}`:""}`;
+    if(c<=p&&ok&&up) out.push({cls:"p-buy",tag:"Racheter",k:"buy",rk:0,txt:t+limTxt(a)});
+    else if(c<=p&&ok) out.push({cls:"p-warn",tag:"Attendre le rebond",k:"soonbuy",rk:2,txt:t});
+    else out.push({cls:"p-ok",tag:"Rachat en veille",k:null,rk:3,txt:t+` · encore ${pct((p-c)/c).replace("-","−")}`});
+  }
+  else if(n(a.prix)!=null){
     const p=+(n(a.prixDerive)??a.prix), dl=left(a.avant), dist=(c-p)/c;
     let r;
     if(n(l.pru)!=null) r={cls:"p-ok",tag:"Achat fait",k:null,rk:3,txt:`Seuil d'achat <b>${eur1(p)}</b> · arbitrage déjà fait (PRU ${eur(+l.pru)})`};
@@ -648,6 +656,7 @@ function openSheet(l){
       <label class="full">Objectif à atteindre avant le<input id="f-vd" type="date" value="${g(editing.vente,"avant")}"></label>
       <p class="hint">Passé la date, la ligne passe en « Délai dépassé » pour que tu décides : vendre, prolonger ou changer d'objectif.</p>
     </fieldset>
+    <label>Prix de vente (si tu viens de vendre tout ou partie)<input id="f-pv" type="number" step="any" inputmode="decimal" placeholder="ex. 88,6"></label>
     <label>Dividende annuel (€ par action)<input id="f-div" type="number" step="any" inputmode="decimal" value="${g(editing.dividende,"montant")}"></label>
     <p class="hint">Médaille : bronze ≥ 2 %, argent ≥ 4 %, or ≥ 6 % de rendement au cours actuel.</p>
     ${l?anaBlock(l):""}
@@ -676,6 +685,9 @@ function openSheet(l){
       achat:{prix:n(v("#f-ap")),avant:v("#f-ad")||null},vente:{objectif:n(v("#f-vo")),stop:n(v("#f-vs")),avant:v("#f-vd")||null},note:v("#f-note"),maj:new Date().toISOString()};
     if($("#f-vendu").checked) rec.vendu=editing.vendu||{date:TODAY}; else delete rec.vendu;
     const hz=v("#f-hz"); if(!hz) delete rec.horizon; else if(hz!==editing.horizon?.type) rec.horizon={type:hz,date:TODAY,auto:false};
+    // vente saisie : enregistrée (date, prix, quantité) et créditée sur les espèces de l'enveloppe
+    const pv=n(v("#f-pv")), q0=editing.vendu?0:(n(editing.qte)||0), q1=rec.vendu?0:(n(rec.qte)||0);
+    if(pv&&q1<q0){const qv=q0-q1;rec.ventes=[...(editing.ventes||[]),{date:TODAY,prix:pv,qte:qv,pru:n(editing.pru),type:q1>0?"tranche":"totale",source:"saisie page"}];rec._credit=Math.round(qv*pv*100)/100;}
     const dv=n(v("#f-div"));
     if(dv==null) delete rec.dividende;
     else if(dv!==n(editing.dividende?.montant)) rec.dividende={montant:dv,estime:false,date:TODAY,info:"saisi à la main"};
@@ -685,9 +697,11 @@ function openSheet(l){
     const err=$("#f-err");
     if(!rec.nom){err.textContent="Donne un nom à la ligne.";err.hidden=false;return;}
     if(rec.vente.objectif!=null&&rec.vente.stop!=null&&rec.vente.stop>=rec.vente.objectif){err.textContent="Le stop doit être inférieur à l'objectif de vente.";err.hidden=false;return;}
+    const cr=rec._credit; delete rec._credit;
     try{await saveLine(l?.id,rec);
       // achat saisi (quantité × PRU en hausse) dans une enveloppe avec espèces suivies : on le prend sur les espèces
       const cost=x=>{const q=x&&!x.vendu?n(x.qte):null,p=x?n(x.pru):null;return q>0&&p>0?q*p:0;};
+      if(cr&&n(especes?.[rec.env])!=null&&db){try{await db.collection("journal").doc("especes").update({[rec.env]:Math.round((n(especes[rec.env])+cr)*100)/100,date:TODAY});}catch{}}
       const dlt=Math.round((cost(rec)-(l?.env===rec.env?cost(editing):0))*100)/100, cs=n(especes?.[rec.env]);
       if(dlt>0.004&&cs!=null&&db){try{await db.collection("journal").doc("especes").update({[rec.env]:Math.round((cs-dlt)*100)/100,date:TODAY});}catch{}}
       close();}catch(x){err.textContent="Enregistrement impossible : "+(x?.message||x);err.hidden=false;}
