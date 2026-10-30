@@ -112,7 +112,10 @@
   // Le jeton doit aussi avoir « Actions : read and write » sur le dépôt.
   async function relever() {
     const c = cfg(); if (!c) return;
-    const b = document.getElementById("btnRelever"); const fin = (t) => { if (b) { b.disabled = false; b.textContent = "Rafraîchir les cours"; } etat(t); };
+    const bs = ["btnRelever", "btnReleverHaut"].map(id => document.getElementById(id)).filter(Boolean);
+    const txt = { btnRelever: "Rafraîchir les cours", btnReleverHaut: "↻ Rafraîchir les cours" };
+    const b = bs.length ? { set disabled(v) { bs.forEach(x => x.disabled = v); }, set textContent(t) { bs.forEach(x => x.textContent = t === null ? txt[x.id] : (x.id === "btnReleverHaut" ? "↻ " : "") + t); } } : null;
+    const fin = (t) => { if (b) { b.disabled = false; b.textContent = null; } etat(t); };
     if (!navigator.onLine) { etat("hors ligne"); return; }
     if (b) { b.disabled = true; b.textContent = "Relevé en cours…"; }
     const api = `https://api.github.com/repos/${c.owner}/${c.repo}/actions/workflows/robot.yml`;

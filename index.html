@@ -207,6 +207,7 @@ input[type=number]{font-family:var(--f-num)}
 .loginbox label{display:grid;gap:4px;font-size:13px}.loginbox input{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 .loginbox button{font:inherit;font-weight:600;padding:10px;border:0;border-radius:8px;background:var(--ink);color:var(--surface);cursor:pointer}
 .loginbox .err{color:var(--down);font-size:13px}
+.btnRelever{display:inline-block;margin-top:6px;font:500 12px var(--f-body,inherit);background:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted);cursor:pointer}.btnRelever:disabled{opacity:.6}
 .syncbar{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0 24px}
 .syncbar button{font:inherit;background:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted);cursor:pointer}
 </style>
@@ -218,7 +219,7 @@ input[type=number]{font-family:var(--f-num)}
   <header>
     <div>
       <h1>Vigie Patrimoine</h1>
-      <div class="sub" id="today"></div>
+      <div class="sub" id="today"></div><button type="button" class="btnRelever" id="btnReleverHaut" onclick="vigieRelever()" title="Lance le robot (2-3 min, sans IA)">↻ Rafraîchir les cours</button>
     </div>
     <div class="total"><div class="l">Valorisation suivie</div><div class="v" id="total">—</div><div class="pl" id="totalpl"></div><div class="pl" id="perm"></div></div>
   </header>
