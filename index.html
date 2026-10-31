@@ -479,6 +479,8 @@ function spk(l){
 }
 /* niveau de baisse sur 4 (robot vigie-cours, critères cumulatifs) */
 /* 😈 dérive financière (robot du matin, règle du 23/10/2026) : BPA révisé de plus de −10 % en 90 jours, perte attendue ou dette nette en forte hausse */
+function rvb(l){const r=n(l.revisionBpa?.r90);if(!(r>=0.10))return "";const t=`Révision haussière du BPA de l'année : +${Math.round(r*100)} % en 90 jours (${fdate(l.revisionBpa.date)})`;return ` <span title="${esc(t)}" aria-label="${esc(t)}" style="cursor:help">✨</span>`;}
+function clm(l){return l.quant?.calme&&isAct(l)?`<span class="env" title="Faible volatilité : parmi les 40 % d'actions les plus calmes sur 6 mois (${l.quant.hv126!=null?Math.round(l.quant.hv126*100)+" % annualisée":""}). Backtest 10 ans : 56 % de hausses à 3 mois contre 48 % pour les plus agitées." style="background:none;border:1px dashed var(--line)">calme</span>`:"";}
 function drv(l){const d=l.derive;if(!d?.motifs?.length)return "";const t=`Dérive financière (${fdate(d.date)}) : ${d.motifs.join(" · ")}`;return ` <span title="${esc(t)}" aria-label="${esc(t)}" style="cursor:help">😈</span>`;}
 function bx(l){
   const b=l.baisse, v=n(b?.niveau); if(!v) return "";
@@ -652,7 +654,7 @@ function render(){
     const pl=(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
     const drop=isDrop(l), fall=isFalling(l);
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
-      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${qnt(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}</div>
+      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${qnt(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}${rvb(l)}${clm(l)}</div>
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
