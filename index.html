@@ -318,9 +318,10 @@ function evaluate(l){
   if(Q(l)>0&&pr&&hz==="court"&&isAct(l)){
     const g=c/pr-1, ech=l.horizon.date?days(TODAY,new Date(Date.parse(l.horizon.date)+182*864e5).toISOString().slice(0,10)):null;
     const nt3=n(l.higgons?.note), oc=n(v.objectifDerive)??n(v.objectif), ob=(nt3!=null&&nt3>=3&&oc&&oc>pr*1.3)?oc:pr*1.3;
-    const base=`Court terme : ½ à <b>${eur(pr*1.2)}</b> (+20 %) · reste à <b>${eur(ob)}</b> (${ob>pr*1.3?`cible ${nt3}★, `:""}${pct(ob/pr-1)}) · après 6 mois, tout vendre dès <b>${eur(pr*1.03)}</b> (+3 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
+    const base=`Court terme : tout au surachat (RSI > 70) en gain · ½ à <b>${eur(pr*1.2)}</b> (+20 %) · reste à <b>${eur(ob)}</b> (${ob>pr*1.3?`cible ${nt3}★, `:""}${pct(ob/pr-1)}) · après 6 mois, tout vendre dès <b>${eur(pr*1.03)}</b> (+3 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
     let r;
-    if(c>=ob) r={cls:"p-sell",tag:"Vendre le reste",k:"sell",rk:0,txt:base};
+    if(g>0&&l.quant?.surachat) r={cls:"p-sell",tag:"Vendre (surachat)",k:"sell",rk:0,txt:base+` · RSI ${Math.round(l.quant.rsi14)} > 70 : sortie complète`};
+    else if(c>=ob) r={cls:"p-sell",tag:"Vendre le reste",k:"sell",rk:0,txt:base};
     else if(g>=0.20) r={cls:"p-sell",tag:"Vendre la moitié",k:"sell",rk:0,txt:base};
     else if(ech!=null&&ech<=0&&g>=0.03) r={cls:"p-sell",tag:"Tout vendre (+3 %)",k:"sell",rk:0,txt:base};
     else if(ech!=null&&ech<=0) r={cls:"p-gone",tag:"6 mois : attendre +3 %",k:null,rk:2,txt:base};
@@ -328,8 +329,8 @@ function evaluate(l){
     out.push(r);
     if(g<=-0.30) out.push({cls:"p-sell",tag:"Revoir la thèse",k:"sell",rk:0,txt:`Perte ${pct(g)} sur un pari : vérifier les nouvelles et la trésorerie avant de décider (pas de vente automatique)`});
     const te=envTot(l.env), vl=Q(l)*c;
-    if(te&&(vl>0.05*te||l.horizon.allege)&&g>=0.08){const pal=g>=0.16?16:g>=0.12?12:8,k={8:1,12:2,16:3}[pal],q0=n(l.horizon.allege?.qte0)||Q(l),reste=Math.max(0,Q(l)-q0*(3-k)/3);
-      out.push({cls:"p-sell",tag:`Alléger (${k}/3)`,k:"sell",rk:0,txt:`Pari trop gros à +${pal} % : vendre ${k===3?"tout le reste":`${Math.max(1,Math.round(reste))} action(s)`} · tranches de 1/3 à <b>${eur(pr*1.08)}</b>, <b>${eur(pr*1.12)}</b> et <b>${eur(pr*1.16)}</b>`});}
+    if(te&&vl>0.05*te&&((g>0&&l.quant?.surachat)||g>=0.20)){const nv=Math.ceil((vl-0.05*te)/c);
+      out.push({cls:"p-sell",tag:"Alléger",k:"sell",rk:0,txt:`Pari trop gros ${l.quant?.surachat?`en surachat (RSI ${Math.round(l.quant.rsi14)})`:"à +20 %"} : vendre <b>${nv} action(s)</b> pour revenir à 5 % du ${esc(l.env)}`});}
     if(te&&vl>0.05*te) out.push({cls:"p-warn",tag:"Pari trop gros",k:"soonsell",rk:2,txt:`${eur(vl,0)} soit ${(vl/te*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} % du ${esc(l.env)} — plafond 5 % par ligne spéculative`});
   }
   const gc=l.guetCreux; if(Q(l)>0&&gc?.actif&&n(gc.bas)){const sr=n(gc.seuilRebond)||gc.bas*1.015, up=c>=sr&&gc.basDate!==TODAY;
@@ -412,6 +413,7 @@ function anaBlock(l){
   return `<details class="ana"><summary>Données de l'analyse</summary>${t}${p.map(x=>`<p>${x}</p>`).join("")}</details>`;
 }
 /* ---- note quantitative (scripts/quant.py, 31/10/2026) : information, pas un signal ---- */
+const sur=l=>l.quant?.surachat&&isAct(l)?`<span class="env" title="RSI 14 = ${l.quant.rsi14} > 70 : surachat. Information pour le long terme ; vente complète pour un pari en gain (backtest 10 ans)." style="background:var(--sell-soft);color:var(--sell);border:0">Surachat · RSI ${Math.round(l.quant.rsi14)}</span>`:"";
 const isSv=l=>!!(l.quant?.survente&&isAct(l)&&n(l.higgons?.note)>=4);
 const qnt=l=>{const q=l.quant;if(!isSv(l))return "";
   return `<span class="env" title="RSI 14 = ${q.rsi14} : action 4-5★ en survente (RSI < 35). Backtest 10 ans : médiane +14 % à 12 mois, 66 % de cas positifs." style="background:var(--buy-soft);color:var(--buy);border:0">Survente · RSI ${Math.round(q.rsi14)}</span>`;};
@@ -658,7 +660,7 @@ function render(){
     const pl=(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
     const drop=isDrop(l), fall=isFalling(l);
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
-      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${qnt(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}${rvb(l)}${clm(l)}</div>
+      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${qnt(l)}${sur(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}${rvb(l)}${clm(l)}</div>
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
