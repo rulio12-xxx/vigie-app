@@ -229,6 +229,7 @@ input[type=number]{font-family:var(--f-num)}
   <details class="synth tx" id="stratBox"><summary>Stratégie : poids des critères (Pareto)</summary>
     <p class="nc" style="white-space:normal;line-height:1.45">Effet maximal de chaque critère sur le prix d'achat, en part du total (92 points). Higgons : valeur H (PER 12 pour une 5★ contre 8 pour une 0★, environ 33 points) et décote sous le cours (0 % à −30 %, 30 points) ; plancher qualité non compté deux fois. Qualité Higgons et protection 😈 : 90 % du poids ; les effets de marché validés (survente, volatilité, ✨, saison) affinent le moment d'achat. Détail : SPECIFICATIONS.md.</p>
     <table><thead><tr><th class="l">#</th><th class="l">Critère</th><th>Effet</th><th>Poids</th><th>Cumul</th><th class="l"></th></tr></thead><tbody><tr><td class="l">1</td><td class="l">Higgons (5 critères : PER ≤ 12, ROE > 10 %, bénéfices réguliers, dette ≤ 50 %, BPA en hausse)</td><td>63 pts</td><td>68,5 %</td><td>68,5 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:100%"></div></td></tr><tr><td class="l">2</td><td class="l">😈 Dérive financière</td><td>20 pts</td><td>21,7 %</td><td>90,2 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:32%"></div></td></tr><tr><td class="l">3</td><td class="l">Survente 4-5★ (RSI < 35)</td><td>3 pts</td><td>3,3 %</td><td>93,5 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:5%"></div></td></tr><tr><td class="l">4</td><td class="l">Forte volatilité</td><td>2 pts</td><td>2,2 %</td><td>95,7 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:3%"></div></td></tr><tr><td class="l">5</td><td class="l">✨ Révision de BPA</td><td>2 pts</td><td>2,2 %</td><td>97,8 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:3%"></div></td></tr><tr><td class="l">6</td><td class="l">Faible volatilité</td><td>1 pt</td><td>1,1 %</td><td>98,9 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:2%"></div></td></tr><tr><td class="l">7</td><td class="l">Saison (nov-avr / mai-oct)</td><td>1 pt</td><td>1,1 %</td><td>100,0 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:2%"></div></td></tr></tbody></table></details>
+  <details class="synth tx" id="cohBox" hidden><summary>Notes à vérifier (réputation) <span class="num" id="cohN"></span></summary><div id="coh"></div></details>
   <details class="synth tx" id="mensBox" hidden><summary>Rendement mensuel et stratégie <span class="num" id="mensN"></span></summary><div id="mens"></div></details>
   <details class="synth tx" id="txBox" hidden><summary>Journal des transactions <span class="num" id="txN"></span></summary><div id="tx"></div></details>
   <div id="jour"></div>
@@ -253,7 +254,7 @@ const TYPES=["Actions","ETF","Fonds"];
 const isAct=l=>(!l.type||l.type==="Actions")&&l.env!=="PEE"&&l.env!=="Assurance vie"&&!String(l.higgons?.grille||"").startsWith("Fonds")&&!l.fonds;
 const envTot=e=>{if(n(especes?.[e])==null)return 0;let t=0;lines.forEach(x=>{if(x.env===e&&Q(x)>0&&n(x.cours))t+=Q(x)*x.cours;});return t?t+(n(especes?.[e])||0):0;};
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":l.higgons?"Actions":"ETF");
-let especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
+let coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
 const eur1=v=>eur(v,1);
@@ -417,6 +418,14 @@ const sur=l=>l.quant?.surachat&&isAct(l)?`<span class="env" title="RSI 14 = ${l.
 const isSv=l=>!!(l.quant?.survente&&isAct(l)&&n(l.higgons?.note)>=4);
 const qnt=l=>{const q=l.quant;if(!isSv(l))return "";
   return `<span class="env" title="RSI 14 = ${q.rsi14} : action 4-5★ en survente (RSI < 35). Backtest 10 ans : médiane +14 % à 12 mois, 66 % de cas positifs." style="background:var(--buy-soft);color:var(--buy);border:0">Survente · RSI ${Math.round(q.rsi14)}</span>`;};
+/* ---- notes à vérifier : écart entre la note et le consensus des analystes (document « journal/coherence », règle du 31/10/2026) ---- */
+function renderCoh(){
+  const box=$("#cohBox"); if(!box) return; const a=coh?.liste||[]; if(!a.length){box.hidden=true;return;} box.hidden=false;
+  $("#cohN").textContent=`(${a.length})`;
+  const t={haute:"Note peut-être trop haute",basse:"Note peut-être trop basse",cible:"Cible optimiste"};
+  $("#coh").innerHTML=Object.keys(t).map(k=>{const b=a.filter(x=>x.sens===k);return b.length?`<h3>${t[k]} (${b.length})</h3><ul>${b.map(x=>`<li><b>${esc(x.nom)}</b> — ${esc(x.txt)}</li>`).join("")}</ul>`:"";}).join("")
+    +`<div class="src">Consensus des analystes Yahoo Finance (au moins 3 analystes)${coh.date?`, ${fdate(coh.date)}`:""}. Aucune note n'est changée automatiquement : relire le dernier rapport annuel. Échelle : 1 = achat fort, 5 = vente.</div>`;
+}
 /* ---- rendement mensuel et stratégie (document « journal/mensuel », règle du 31/10/2026) ---- */
 function renderMens(){
   const box=$("#mensBox"); if(!box) return; const M=mens?.mois||{}, ks=Object.keys(M).sort().reverse(); if(!ks.length){box.hidden=true;return;} box.hidden=false;
@@ -814,6 +823,7 @@ window.addEventListener("pageshow",e=>{if(e.persisted&&typeof window.subscribe==
     unsubs.forEach(u=>{try{u&&u();}catch{}}); unsubs=[]; clearTimeout(retry);
     try{unsubs.push(db.collection("journal").doc("jour").onSnapshot(d=>{jour=d.exists?d.data():null;renderJour();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("readme").onSnapshot(d=>{const r=d.exists?d.data():null,box=$("#readme");if(!box)return;if(!r||!r.md){box.hidden=true;return;}box.hidden=false;$("#readmeDate").textContent=r.date?`mis à jour le ${fdate(r.date)}`:"";try{$("#readmeBody").innerHTML=window.marked?marked.parse(r.md):`<pre>${esc(r.md)}</pre>`;}catch{$("#readmeBody").innerHTML=`<pre>${esc(r.md)}</pre>`;}},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("coherence").onSnapshot(d=>{coh=d.exists?d.data():null;renderCoh();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("mensuel").onSnapshot(d=>{mens=d.exists?d.data():null;renderMens();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("transactions").onSnapshot(d=>{txs=d.exists?d.data():null;renderTx();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("especes").onSnapshot(d=>{especes=d.exists?d.data():null;render();},()=>{}));}catch{}
