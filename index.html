@@ -226,6 +226,7 @@ input[type=number]{font-family:var(--f-num)}
   </header>
   <div class="banner" id="banner" hidden></div>
   <div class="synth" id="synth"></div>
+  <details class="synth tx" id="mensBox" hidden><summary>Rendement mensuel et stratégie <span class="num" id="mensN"></span></summary><div id="mens"></div></details>
   <details class="synth tx" id="txBox" hidden><summary>Journal des transactions <span class="num" id="txN"></span></summary><div id="tx"></div></details>
   <div id="jour"></div>
   <div class="signals" id="signals"></div>
@@ -249,7 +250,7 @@ const TYPES=["Actions","ETF","Fonds"];
 const isAct=l=>(!l.type||l.type==="Actions")&&l.env!=="PEE"&&l.env!=="Assurance vie"&&!String(l.higgons?.grille||"").startsWith("Fonds")&&!l.fonds;
 const envTot=e=>{if(n(especes?.[e])==null)return 0;let t=0;lines.forEach(x=>{if(x.env===e&&Q(x)>0&&n(x.cours))t+=Q(x)*x.cours;});return t?t+(n(especes?.[e])||0):0;};
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":l.higgons?"Actions":"ETF");
-let especes=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
+let especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterMine=false, filterStar=null, filterType="Actions", db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
 const eur1=v=>eur(v,1);
@@ -412,6 +413,15 @@ function anaBlock(l){
 const qnt=l=>{const q=l.quant;if(!q||n(q.note)==null)return "";const f=(v,d=0)=>v==null?"—":(v*100).toLocaleString("fr-FR",{maximumFractionDigits:d});
   const t=`Note quantitative ${q.note}/100 (rang ${q.rang}/${q.univers}) — momentum 12-1 ${f(q.m12_1)} % · ROC 21/63/126 ${f(q.roc21)} / ${f(q.roc63)} / ${f(q.roc126)} % · force relative 63 j vs CAC ${f(q.rs63)} % · RSI 14 ${q.rsi14!=null?Math.round(q.rsi14):"—"} · volatilité 20 j ${f(q.hv20)} % · tendance ${q.tendance}/2 · Sharpe ${q.sharpe!=null?q.sharpe.toFixed(2):"—"} — backtest de son quintile (${q.p21?.quintile}) : P(+5 % en 21 séances) ${f(q.p21?.p5)} %. Indicatif : pas de pouvoir prédictif démontré sur un an.`;
   return `<span class="env" title="${esc(t)}" style="background:none;border:1px solid var(--line)">Q${Math.round(q.note)}</span>`;};
+/* ---- rendement mensuel et stratégie (document « journal/mensuel », règle du 31/10/2026) ---- */
+function renderMens(){
+  const box=$("#mensBox"); if(!box) return; const M=mens?.mois||{}, ks=Object.keys(M).sort().reverse(); if(!ks.length){box.hidden=true;return;} box.hidden=false;
+  $("#mensN").textContent=`(${ks.length})`;
+  const nm=k=>new Date(k+"-15").toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+  $("#mens").innerHTML=ks.map(k=>{const m=M[k],E=m.enveloppes||{};
+    const rows=Object.entries(E).map(([e,v])=>`<tr><td class="l">${esc(e)}</td><td>${eur(v.valeur,0)}</td><td class="${(v.rendementMois??0)>=0?"pos":"neg"}">${v.rendementMois!=null?pct(v.rendementMois):"—"}</td><td>${v.verse!=null?`${eur(v.valeur-v.verse,0)} (${pct(v.valeur/v.verse-1)})`:`${eur(v.valeur-v.cout,0)} latents`}</td></tr>`).join("");
+    return `<h3>${esc(nm(k))} <span class="num">· ${fdate(m.date)} ${esc(m.heure||"")} · total ${eur(m.total,0)}</span></h3><table><thead><tr><th class="l">Enveloppe</th><th>Valeur</th><th>Mois</th><th>Depuis le début</th></tr></thead><tbody>${rows}</tbody></table>${m.strategie?`<p class="nc" style="white-space:normal;line-height:1.45">${esc(m.strategie)}</p>`:""}`;}).join("");
+}
 /* ---- journal des transactions (document « journal/transactions », règle du 30/10/2026) ---- */
 function renderTx(){
   const box=$("#txBox"); if(!box) return;
@@ -793,6 +803,7 @@ window.addEventListener("pageshow",e=>{if(e.persisted&&typeof window.subscribe==
     unsubs.forEach(u=>{try{u&&u();}catch{}}); unsubs=[]; clearTimeout(retry);
     try{unsubs.push(db.collection("journal").doc("jour").onSnapshot(d=>{jour=d.exists?d.data():null;renderJour();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("readme").onSnapshot(d=>{const r=d.exists?d.data():null,box=$("#readme");if(!box)return;if(!r||!r.md){box.hidden=true;return;}box.hidden=false;$("#readmeDate").textContent=r.date?`mis à jour le ${fdate(r.date)}`:"";try{$("#readmeBody").innerHTML=window.marked?marked.parse(r.md):`<pre>${esc(r.md)}</pre>`;}catch{$("#readmeBody").innerHTML=`<pre>${esc(r.md)}</pre>`;}},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("mensuel").onSnapshot(d=>{mens=d.exists?d.data():null;renderMens();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("transactions").onSnapshot(d=>{txs=d.exists?d.data():null;renderTx();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("especes").onSnapshot(d=>{especes=d.exists?d.data():null;render();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("speculation").onSnapshot(d=>{spec=d.exists?d.data():null;renderSpec();render();},()=>{}));}catch{}
