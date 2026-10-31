@@ -268,7 +268,8 @@ function evaluate(l){
   const c=n(l.cours), out=[]; let rank=4;
   const a=l.achat||{}, v=l.vente||{};
   const hasRule=n(a.prix)!=null||n(v.objectif)!=null||n(v.stop)!=null;
-  const dA=n(a.prixDerive)!=null?` <span title="${esc(a.baseDerive||"")}">(😈 abaissé de ${eur1(+a.prix)})</span>`:"", dV=n(v.objectifDerive)!=null?` <span title="${esc(v.baseDerive||"")}">(😈 abaissée de ${eur(+v.objectif)})</span>`:"";
+  const mo=x=>{const m=n(x?.modulation);return m==null?"":`${m>0?"+":"−"}${Math.round(Math.abs(m)*100)} %`;};
+  const dA=n(a.prixDerive)!=null?` <span title="${esc(a.baseDerive||"")}" style="cursor:help">(modulé ${mo(a)||"😈"} : base ${eur1(+a.prix)})</span>`:"", dV=n(v.objectifDerive)!=null?` <span title="${esc(v.baseDerive||"")}" style="cursor:help">(modulée ${mo(v)||"😈"} : base ${eur(+v.objectif)})</span>`:"";
   if(c==null||!hasRule){return {rank:5,rules:[{cls:"p-ok",tag:"À configurer",txt:c==null?"Saisis le cours actuel":"Ajoute un seuil d'achat ou de vente",k:null}]};}
   const left=d=>d?days(TODAY,d):null;
   if(l.vendu&&n(l.rachat?.prix)!=null){
