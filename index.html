@@ -275,8 +275,7 @@ function evaluate(l){
     // ligne vendue : rachat (règle du 30/10/2026) = le plus bas de (vente − 15 %, seuil d'achat), note ≥ 3★, pas de 😈, cours qui remonte
     const p=+l.rachat.prix, nt=n(l.higgons?.note), ok=nt!=null&&nt>=3&&!l.derive?.motifs?.length, up=a.limite?.date===TODAY&&(a.limite.tendance==="remonte"||a.limite.rebond);
     const t=`Rachat ≤ <b>${eur(p)}</b> · ${esc(l.rachat.base||"")}${!ok?` · bloqué : ${nt==null?"pas de note":nt<3?`note ${nt}★ (< 3★)`:"😈"}`:""}`;
-    if(c<=p&&ok&&up) out.push({cls:"p-buy",tag:"Racheter",k:"buy",rk:0,txt:t+limTxt(a)});
-    else if(c<=p&&ok) out.push({cls:"p-warn",tag:"Attendre le rebond",k:"soonbuy",rk:2,txt:t});
+    if(c<=p&&ok) out.push({cls:"p-buy",tag:"Racheter",k:"buy",rk:0,txt:t+limTxt(a)});
     else out.push({cls:"p-ok",tag:"Rachat en veille",k:null,rk:3,txt:t+` · encore ${pct((p-c)/c).replace("-","−")}`});
   }
   else if(n(a.prix)!=null){
@@ -284,7 +283,6 @@ function evaluate(l){
     let r;
     if(n(l.pru)!=null) r={cls:"p-ok",tag:"Achat fait",k:null,rk:3,txt:`Seuil d'achat <b>${eur1(p)}</b> · arbitrage déjà fait (PRU ${eur(+l.pru)})`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
-    else if(c<=p&&isAct(l)&&!(n(l.higgons?.note)>2)&&!(a.limite?.date===TODAY&&(a.limite.tendance==="remonte"||a.limite.rebond))) r={cls:"p-warn",tag:"Attendre le rebond",k:"soonbuy",rk:2,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais valeur ${n(l.higgons?.note)??"?"}★ encore en baisse : achat seulement quand le cours remonte (règle des paris)${limTxt(a)}`};
     else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}${limTxt(a)}`};
     else{
       const soon=dl!=null&&dl<=SOON_DAYS, near=(c-p)/p<NEAR_PCT; // écart mesuré par rapport au seuil, comme la routine
@@ -410,9 +408,8 @@ function anaBlock(l){
   return `<details class="ana"><summary>Données de l'analyse</summary>${t}${p.map(x=>`<p>${x}</p>`).join("")}</details>`;
 }
 /* ---- note quantitative (scripts/quant.py, 31/10/2026) : information, pas un signal ---- */
-const qnt=l=>{const q=l.quant;if(!q||n(q.note)==null)return "";const f=(v,d=0)=>v==null?"—":(v*100).toLocaleString("fr-FR",{maximumFractionDigits:d});
-  const t=`Note quantitative ${q.note}/100 (rang ${q.rang}/${q.univers}) — momentum 12-1 ${f(q.m12_1)} % · ROC 21/63/126 ${f(q.roc21)} / ${f(q.roc63)} / ${f(q.roc126)} % · force relative 63 j vs CAC ${f(q.rs63)} % · RSI 14 ${q.rsi14!=null?Math.round(q.rsi14):"—"} · volatilité 20 j ${f(q.hv20)} % · tendance ${q.tendance}/2 · Sharpe ${q.sharpe!=null?q.sharpe.toFixed(2):"—"} — backtest de son quintile (${q.p21?.quintile}) : P(+5 % en 21 séances) ${f(q.p21?.p5)} %. Indicatif : pas de pouvoir prédictif démontré sur un an.`;
-  return `<span class="env" title="${esc(t)}" style="background:none;border:1px solid var(--line)">Q${Math.round(q.note)}</span>`;};
+const qnt=l=>{const q=l.quant;if(!q?.survente||!isAct(l)||!(n(l.higgons?.note)>=4))return "";
+  return `<span class="env" title="RSI 14 = ${q.rsi14} : action 4-5★ en survente (RSI < 35). Backtest 10 ans : médiane +14 % à 12 mois, 66 % de cas positifs." style="background:var(--buy-soft);color:var(--buy);border:0">Survente ${Math.round(q.rsi14)}</span>`;};
 /* ---- rendement mensuel et stratégie (document « journal/mensuel », règle du 31/10/2026) ---- */
 function renderMens(){
   const box=$("#mensBox"); if(!box) return; const M=mens?.mois||{}, ks=Object.keys(M).sort().reverse(); if(!ks.length){box.hidden=true;return;} box.hidden=false;
@@ -521,7 +518,7 @@ const isProt=l=>false;
 const violet=l=>{const p=n(l.pru);if(p==null||!(Q(l)>0))return null;const c=n(l.cours);return c!=null&&c>=p*(1+GAIN_PROTECT)?null:p*0.9;};
 const isDropRaw=l=>{const c=n(l.cours),v=violet(l);return c!=null&&v!=null&&c<=v;};
 /* longue baisse en cours (règle du 30/10/2026) : sous la moyenne 200 séances, pente annuelle négative et tendance courte pas encore « remonte » → pas de violet */
-const longDecline=l=>{const t=l.baisse?.tunnel||{};return !!(t.sousMM200&&n(t.penteAn)<0&&l.renfort?.tendance!=="remonte"&&l.achat?.limite?.tendance!=="remonte");};
+const longDecline=l=>false; // règle « longue baisse » supprimée le 31/10/2026 (backtest 10 ans : acheter en tendance baissière a mieux marché)
 const isFalling=l=>isDropRaw(l)&&longDecline(l);
 const isDrop=l=>isDropRaw(l)&&!longDecline(l);
 const protSeen=new Set();
