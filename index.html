@@ -408,6 +408,10 @@ function anaBlock(l){
   if(a?.date) p.push(`<span class="k">Relevé du ${fdate(a.date)} · ${esc(a.source||"")}${est.length?" · en italique : estimations des analystes":""}</span>`);
   return `<details class="ana"><summary>Données de l'analyse</summary>${t}${p.map(x=>`<p>${x}</p>`).join("")}</details>`;
 }
+/* ---- note quantitative (scripts/quant.py, 31/10/2026) : information, pas un signal ---- */
+const qnt=l=>{const q=l.quant;if(!q||n(q.note)==null)return "";const f=(v,d=0)=>v==null?"—":(v*100).toLocaleString("fr-FR",{maximumFractionDigits:d});
+  const t=`Note quantitative ${q.note}/100 (rang ${q.rang}/${q.univers}) — momentum 12-1 ${f(q.m12_1)} % · ROC 21/63/126 ${f(q.roc21)} / ${f(q.roc63)} / ${f(q.roc126)} % · force relative 63 j vs CAC ${f(q.rs63)} % · RSI 14 ${q.rsi14!=null?Math.round(q.rsi14):"—"} · volatilité 20 j ${f(q.hv20)} % · tendance ${q.tendance}/2 · Sharpe ${q.sharpe!=null?q.sharpe.toFixed(2):"—"} — backtest de son quintile (${q.p21?.quintile}) : P(+5 % en 21 séances) ${f(q.p21?.p5)} %. Indicatif : pas de pouvoir prédictif démontré sur un an.`;
+  return `<span class="env" title="${esc(t)}" style="background:none;border:1px solid var(--line)">Q${Math.round(q.note)}</span>`;};
 /* ---- journal des transactions (document « journal/transactions », règle du 30/10/2026) ---- */
 function renderTx(){
   const box=$("#txBox"); if(!box) return;
@@ -639,7 +643,7 @@ function render(){
     const pl=(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
     const drop=isDrop(l), fall=isFalling(l);
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
-      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}</div>
+      <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${qnt(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}</div>
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
