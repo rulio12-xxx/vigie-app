@@ -345,7 +345,7 @@ function evaluate(l){
 }
 /* ---- note Quality Value (Higgons) : 1 à 5 étoiles ---- */
 /* ordre à cours limité conseillé (robot, règle du 22/10/2026), affiché seulement s'il date du jour */
-const limTxt=a=>{const m=a?.limite;if(!m||n(m.prix)==null||m.date!==TODAY)return "";return ` · <span title="${esc(m.base||"")}">${m.rebond?"rebond après seuil : ":""}limite conseillée <b>${eur(+m.prix,2)}</b>${m.tendance?` (${esc(m.tendance)})`:""}</span>`;};
+const limTxt=a=>{const m=a?.limite;if(!m||n(m.prix)==null||m.date!==TODAY)return "";return ` · <span title="${esc(m.base||"")}"><b style="font-size:1.12em;color:var(--buy);white-space:nowrap">${m.rebond?"rebond après seuil : ":""}limite conseillée ${eur(+m.prix,2)}</b>${m.tendance?` (${esc(m.tendance)})`:""}</span>`;};
 /* ligne détenue sous PRU − 10 % : renfort à cours limité conseillé (robot, règle du 22/10/2026) */
 const renfTxt=l=>{const m=l.renfort;if(!m||n(m.prix)==null||m.date!==TODAY||!(n(l.cours)<=n(m.seuil)))return "";return `<div class="rule"><span class="pill p-buy" style="background:var(--drop);color:#fff">Renforcer ?</span><span class="txt" title="${esc(m.base||"")}">Cours sous PRU − 10 % (<b>${eur(+m.seuil,2)}</b>) · limite conseillée <b>${eur(+m.prix,2)}</b> (${esc(m.tendance||"")})</span></div>`;};
 /* notes personnelles : le texte écrit entre guillemets dans le champ « note » est affiché dans la vignette */
