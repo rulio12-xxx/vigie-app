@@ -420,7 +420,8 @@ const qnt=l=>{const q=l.quant;if(!isSv(l))return "";
   return `<span class="env" title="RSI 14 = ${q.rsi14} : action 4-5★ en survente (RSI < 35). Backtest 10 ans : médiane +14 % à 12 mois, 66 % de cas positifs." style="background:var(--buy-soft);color:var(--buy);border:0">Survente · RSI ${Math.round(q.rsi14)}</span>`;};
 /* ---- notes à vérifier : écart entre la note et le consensus des analystes (document « journal/coherence », règle du 31/10/2026) ---- */
 function renderCoh(){
-  const box=$("#cohBox"); if(!box) return; const a=coh?.liste||[]; if(!a.length){box.hidden=true;return;} box.hidden=false;
+  const box=$("#cohBox"); if(!box) return; box.hidden=true; return;  // traité par la revue hebdomadaire de l'IA (05/11/2026)
+  const a=coh?.liste||[];
   $("#cohN").textContent=`(${a.length})`;
   const t={haute:"Note peut-être trop haute",basse:"Note peut-être trop basse",cible:"Cible optimiste"};
   $("#coh").innerHTML=Object.keys(t).map(k=>{const b=a.filter(x=>x.sens===k);return b.length?`<h3>${t[k]} (${b.length})</h3><ul>${b.map(x=>`<li><b>${esc(x.nom)}</b> — ${esc(x.txt)}</li>`).join("")}</ul>`:"";}).join("")
