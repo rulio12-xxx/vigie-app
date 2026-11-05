@@ -759,7 +759,10 @@ function openSheet(l){
     const v=id=>$(id).value.trim();
     const {id:_omit,...keep}=editing;
     const rec={...keep,env:v("#f-env"),code:v("#f-code"),nom:v("#f-nom"),qte:n(v("#f-qte")),pru:n(v("#f-pru")),cours:n(v("#f-cours")),coursDate:v("#f-cdate")||null,
-      achat:{prix:n(v("#f-ap")),avant:v("#f-ad")||null},vente:{objectif:n(v("#f-vo")),stop:n(v("#f-vs")),avant:v("#f-vd")||null},note:v("#f-note"),maj:new Date().toISOString()};
+      achat:(()=>{const o=editing.achat||{},px=n(v("#f-ap")),ch=px!=null&&px!==n(o.prix);  // 05/11/2026 : on garde les champs calculés ; un prix changé à la main devient « fixé à la main »
+        return {...o,prix:px,avant:v("#f-ad")||null,...(ch?{manuel:true,ancien:n(o.prix),base:`Fixé à la main le ${new Date().toLocaleDateString("fr-FR")} (page)`,prixDerive:null,baseDerive:null,modulation:null,gardeFou:null}:{})};})(),
+      vente:(()=>{const o=editing.vente||{},ob=n(v("#f-vo")),ch=ob!==n(o.objectif);
+        return {...o,objectif:ob,stop:n(v("#f-vs")),avant:v("#f-vd")||null,...(ch?{base:`Fixé à la main le ${new Date().toLocaleDateString("fr-FR")} (page)`,objectifDerive:null,baseDerive:null,modulation:null}:{})};})(),note:v("#f-note"),maj:new Date().toISOString()};
     if($("#f-vendu").checked) rec.vendu=editing.vendu||{date:TODAY}; else delete rec.vendu;
     const hz=v("#f-hz"); if(!hz) delete rec.horizon; else if(hz!==editing.horizon?.type) rec.horizon={type:hz,date:TODAY,auto:false};
     // vente saisie : enregistrée (date, prix, quantité) et créditée sur les espèces de l'enveloppe
