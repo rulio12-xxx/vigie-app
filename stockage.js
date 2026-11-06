@@ -115,9 +115,21 @@
     const bs = ["btnRelever", "btnReleverHaut"].map(id => document.getElementById(id)).filter(Boolean);
     const txt = { btnRelever: "Rafraîchir les cours", btnReleverHaut: "↻ Rafraîchir les cours" };
     const b = bs.length ? { set disabled(v) { bs.forEach(x => x.disabled = v); }, set textContent(t) { bs.forEach(x => x.textContent = t === null ? txt[x.id] : (x.id === "btnReleverHaut" ? "↻ " : "") + t); } } : null;
-    const fin = (t) => { if (b) { b.disabled = false; b.textContent = null; } etat(t); };
+    let fin = (t) => { if (b) { b.disabled = false; b.textContent = null; } etat(t); };
     if (!navigator.onLine) { etat("hors ligne"); return; }
-    if (b) { b.disabled = true; b.textContent = "Relevé en cours…"; }
+    if (b) { b.disabled = true; b.textContent = "Relevé 0 %"; }
+    // progression : étapes du robot terminées (API GitHub) et, entre deux relevés, temps écoulé / durée du dernier relevé (plafonné à 95 %)
+    const DUREE = "vigie-duree-releve", t0 = Date.now();
+    let duree = 150000, pEtapes = 0, pct = 0;
+    try { duree = Math.max(60000, +localStorage.getItem(DUREE) || 150000); } catch (_) {}
+    const hb = document.getElementById("btnReleverHaut");
+    let barre = document.getElementById("progReleve");
+    if (hb && !barre) { barre = document.createElement("span"); barre.id = "progReleve"; barre.className = "progReleve"; barre.innerHTML = "<i></i>"; hb.after(barre); }
+    if (barre) barre.hidden = false;
+    const montrer = (v) => { pct = Math.max(pct, Math.min(100, Math.round(v))); if (b) b.textContent = `Relevé ${pct} %`; if (barre) barre.firstChild.style.width = pct + "%"; };
+    const tic = setInterval(() => montrer(Math.max(pEtapes, Math.min(95, (Date.now() - t0) / duree * 100))), 1000);
+    const fin0 = fin;
+    fin = (t) => { clearInterval(tic); if (barre) setTimeout(() => { barre.hidden = true; barre.firstChild.style.width = "0"; }, 1500); fin0(t); };
     const api = `https://api.github.com/repos/${c.owner}/${c.repo}/actions/workflows/robot.yml`;
     const depart = Date.now() - 5000;
     try {
@@ -130,9 +142,15 @@
         const run = q.ok ? (await q.json()).workflow_runs?.[0] : null;
         if (run && Date.parse(run.created_at) >= depart) {
           etat(`relevé : ${run.status === "completed" ? "terminé" : "en cours"} (${i * 10 + 10} s)`);
+          try {
+            const j = await fetch(run.jobs_url, { headers: entetes(c), cache: "no-store" });
+            const st = j.ok ? ((await j.json()).jobs || []).flatMap(x => x.steps || []) : [];
+            if (st.length) pEtapes = Math.min(95, st.filter(x => x.status === "completed").length / st.length * 100);
+          } catch (_) {}
           if (run.status === "completed") {
             if (run.conclusion !== "success") { fin(`relevé en échec (${run.conclusion})`); return; }
-            await tirer(true); fin(`cours rafraîchis ${heure(recu)} · robot ${data?.etat?.releve || "?"}`); return;
+            try { localStorage.setItem(DUREE, String(Date.now() - t0)); } catch (_) {}
+            montrer(100); await tirer(true); fin(`cours rafraîchis ${heure(recu)} · robot ${data?.etat?.releve || "?"}`); return;
           }
         }
       }
