@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Vigie Patrimoine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: carnet d'ordres — bandeau de signaux, filtres par enveloppe, puis lignes triées par urgence */
 :root{
@@ -201,6 +201,48 @@ input[type=number]{font-family:var(--f-num)}
 .btn.danger{color:var(--sell);border-color:var(--sell)}
 .err{color:var(--sell);font-size:13px}
 @media (prefers-reduced-motion:no-preference){.row{transition:border-color .15s}.row:hover{border-color:var(--muted)}}
+
+/* Thème Google (Material 3), 07/11/2026 : palette et typographie Google, cartes arrondies sans bordure, puces et boutons en pilule */
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --sunk:#F1F3F4; --ink:#1F1F1F; --muted:#5F6368; --line:#DADCE0;
+  --accent:#0B57D0; --accent-soft:#D3E3FD;
+  --buy:#D93025; --buy-soft:#FCE8E6; --sell:#188038; --sell-soft:#E6F4EA; --up:#188038; --up-soft:#E6F4EA; --down:#D93025;
+  --warn:#B06000; --warn-soft:#FEF7E0; --hig:#007B83;
+  --f-display:"Google Sans","Product Sans","Roboto",system-ui,sans-serif;
+  --f-body:"Google Sans Text","Roboto",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"Roboto",system-ui,sans-serif;
+  --elev:0 1px 2px rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131314; --surface:#1E1F20; --sunk:#282A2C; --ink:#E3E3E3; --muted:#9AA0A6; --line:#3C4043;
+  --accent:#A8C7FA; --accent-soft:#0842A0; --buy:#F28B82; --buy-soft:#3C1E1C; --sell:#81C995; --sell-soft:#1E3326;
+  --up:#81C995; --up-soft:#1E3326; --down:#F28B82; --warn:#FDD663; --warn-soft:#3A3014; --hig:#78D9EC; --elev:0 1px 3px rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{
+  --bg:#131314; --surface:#1E1F20; --sunk:#282A2C; --ink:#E3E3E3; --muted:#9AA0A6; --line:#3C4043;
+  --accent:#A8C7FA; --accent-soft:#0842A0; --buy:#F28B82; --buy-soft:#3C1E1C; --sell:#81C995; --sell-soft:#1E3326;
+  --up:#81C995; --up-soft:#1E3326; --down:#F28B82; --warn:#FDD663; --warn-soft:#3A3014; --hig:#78D9EC; --elev:0 1px 3px rgba(0,0,0,.5)}
+body{font-size:15px;letter-spacing:.01em}
+h1{font:500 24px/1.1 var(--f-display);font-stretch:normal;text-transform:none;letter-spacing:0}
+.total .l,.pill{text-transform:none;letter-spacing:.01em}
+.pill{font-weight:500;font-size:11px;padding:2px 8px}
+.banner{border-radius:12px}
+.sig{border:none;border-radius:16px;box-shadow:var(--elev);padding:8px 12px}
+.sig .n{font-family:var(--f-display);font-weight:500}
+.row{border:none;border-radius:16px;box-shadow:var(--elev);padding:10px 14px 8px 16px}
+.row::before{width:5px}
+.chip{border-radius:8px;padding:6px 12px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);border-color:transparent}
+.chip.reset{border-style:solid}
+.btn{border-radius:999px;padding:10px 24px;font-weight:500}
+.btn.primary{color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#062E6F}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#062E6F}}
+input,select,textarea{border-radius:8px}
+dialog,.sheet,.modal{border-radius:28px}
+.synth,.jour,.readme,.ana{border:none;border-radius:16px;box-shadow:var(--elev)}
+.jour{border-left:none;box-shadow:inset 4px 0 0 var(--accent),var(--elev)}
+fieldset{border-radius:16px}
+.num{font-variant-numeric:tabular-nums;letter-spacing:0}
 
 .login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}
 .loginbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:420px;width:100%;display:grid;gap:10px}
