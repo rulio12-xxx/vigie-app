@@ -293,7 +293,7 @@ fieldset{border-radius:16px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script>
 const ENVS=["PEA","PEA-PME","Assurance vie","PER","PEE","CTO"];
-const SOON_DAYS=15, NEAR_PCT=0.02, NEAR_BUY=0.025, STALE_DAYS=7; // proche de l'achat : < 2,5 % (07/11/2026) ; proche de la vente : < 2 %
+const SOON_DAYS=15, NEAR_PCT=0.03, NEAR_BUY=0.03, STALE_DAYS=7; // proche de l'achat et de la vente : < 3 % (07/11/2026)
 const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en dessous)
 const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
 const TYPES=["Actions","ETF","Fonds"];
@@ -372,7 +372,7 @@ function evaluate(l){
     else if(g>=0.20) r={cls:"p-sell",tag:"Vendre la moitié",k:"sell",rk:0,txt:base};
     else if(ech!=null&&ech<=0&&g>=0.08) r={cls:"p-sell",tag:"Tout vendre (+8 %)",k:"sell",rk:0,txt:base};
     else if(ech!=null&&ech<=0) r={cls:"p-gone",tag:"6 mois : attendre +8 %",k:null,rk:2,txt:base};
-    else{const near=g>=0.18;r={cls:near?"p-warn":"p-ok",tag:near?"Objectif proche":"Court terme",k:near?"soonsell":null,rk:near?2:3,txt:base};}
+    else{const near=c>=pr*1.2/(1+NEAR_PCT);r={cls:near?"p-warn":"p-ok",tag:near?"Objectif proche":"Court terme",k:near?"soonsell":null,rk:near?2:3,txt:base};}
     out.push(r);
     if(g<=-0.30) out.push({cls:"p-warn",tag:"Revoir la thèse",k:"review",rk:1,txt:`Perte ${pct(g)} sur un pari : vérifier les nouvelles et la trésorerie avant de décider (pas de vente automatique)`});
     const te=envTot(l.env), vl=Q(l)*c;
@@ -649,6 +649,14 @@ let fixT=null;addEventListener("resize",()=>{clearTimeout(fixT);fixT=setTimeout(
 function render(){
   $("#today").textContent=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   const ev=lines.map(l=>({l,e:evaluate(l)}));
+  // au moins une ligne « proche » (07/11/2026) : si aucune n'est sous le seuil de 3 %, la plus proche de son prix d'achat (non détenue)
+  // et la plus proche de son objectif de vente (détenue) sont signalées « La plus proche »
+  {const has=k=>ev.some(x=>x.e.rules.some(r=>r.k===k));
+   const best=(f)=>ev.map(x=>({x,d:f(x.l)})).filter(y=>y.d!=null&&y.d>0).sort((a,b)=>a.d-b.d)[0];
+   if(!has("soonbuy")){const b=best(l=>{const c=n(l.cours),p=n(l.achat?.prixDerive)??n(l.achat?.prix);return n(l.pru)==null&&!(Q(l)>0)&&c!=null&&p?(c-p)/p:null;});
+     if(b){b.x.e.rules.push({cls:"p-warn",tag:"La plus proche",k:"soonbuy",rk:2,txt:`Aucune ligne à moins de ${NEAR_BUY*100} % de son prix d'achat : c'est la plus proche (${pct(b.d)} au-dessus)`});b.x.e.rank=Math.min(b.x.e.rank??3,2);}}
+   if(!has("soonsell")){const b=best(l=>{const c=n(l.cours),pr=n(l.pru);if(!(Q(l)>0)||c==null)return null;const o=l.horizon?.type==="court"&&pr?pr*1.2:(n(l.vente?.objectifDerive)??n(l.vente?.objectif));return o?(o-c)/o:null;});
+     if(b){b.x.e.rules.push({cls:"p-warn",tag:"La plus proche",k:"soonsell",rk:2,txt:`Aucune ligne à moins de ${NEAR_PCT*100} % de son objectif : c'est la plus proche (encore ${pct(b.d/(1-b.d))})`});b.x.e.rank=Math.min(b.x.e.rank??3,2);}}}
   const DIVMIN={or:0.06,argent:0.04,bronze:0.02};
   const divOk=l=>{if(!filterDiv)return true;const y=divYield(l);return y!=null&&y>=DIVMIN[filterDiv];};
   const bxN=l=>n(l.baisse?.niveau)||0;
