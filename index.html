@@ -293,7 +293,7 @@ fieldset{border-radius:16px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script>
 const ENVS=["PEA","PEA-PME","Assurance vie","PER","PEE","CTO"];
-const SOON_DAYS=15, NEAR_PCT=0.02, STALE_DAYS=7;
+const SOON_DAYS=15, NEAR_PCT=0.02, NEAR_BUY=0.025, STALE_DAYS=7; // proche de l'achat : < 2,5 % (07/11/2026) ; proche de la vente : < 2 %
 const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en dessous)
 const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
 const TYPES=["Actions","ETF","Fonds"];
@@ -336,7 +336,7 @@ function evaluate(l){
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
     else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}${limTxt(a)}`};
     else{
-      const soon=dl!=null&&dl<=SOON_DAYS, near=(c-p)/p<NEAR_PCT; // écart mesuré par rapport au seuil, comme la routine
+      const soon=dl!=null&&dl<=SOON_DAYS, near=(c-p)/p<NEAR_BUY; // écart mesuré par rapport au seuil, comme la routine
       r={cls:soon||near?"p-warn":"p-ok",tag:soon?"Échéance proche":near?"Seuil proche":"Achat en veille",k:soon||near?"soonbuy":null,rk:soon||near?2:3,
          txt:`Achat ≤ <b>${eur1(p)}</b> · encore ${pct(-dist).replace("-","−")}${dl!=null?` · ${dl} j restants (${fdate(a.avant)})`:""}${near?limTxt(a):""}`};
     }
@@ -659,7 +659,7 @@ function render(){
   const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return h>0&&c!=null&&c<=h;};
   const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,hg:0};
   ev.filter(inScope).forEach(({l,e})=>{const ks=new Set(e.rules.map(r=>r.k).filter(Boolean));ks.forEach(k=>{if(k in cnt)cnt[k]++;});if(isDrop(l))cnt.drop++;if(isHg(l))cnt.hg++;});
-  const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU, ou PRU si +5 % atteint)",soonbuy:`Proches de l'achat (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,hg:"Sous le seuil Higgons"};
+  const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU, ou PRU si +5 % atteint)",soonbuy:`Proches de l'achat (< ${String(NEAR_BUY*100).replace('.',',')} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,hg:"Sous le seuil Higgons"};
   $("#signals").innerHTML=Object.keys(cnt).map(k=>`<button class="sig" type="button" data-k="${k}" aria-pressed="${filterSig===k}"><span class="n">${cnt[k]}</span><span class="t">${labels[k]}</span></button>`).join("");
   // types d'actifs + bouton tout réafficher
   $("#types").innerHTML=TYPES.filter(t=>lines.some(l=>typeOf(l)===t)).map(t=>`<button class="chip" type="button" data-type="${t}" aria-pressed="${filterType===t}">${t} <span class="num">${lines.filter(l=>typeOf(l)===t).length}</span></button>`).join("")+
