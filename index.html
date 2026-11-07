@@ -243,6 +243,10 @@ dialog,.sheet,.modal{border-radius:28px}
 .jour{border-left:none;box-shadow:inset 4px 0 0 var(--accent),var(--elev)}
 fieldset{border-radius:16px}
 .num{font-variant-numeric:tabular-nums;letter-spacing:0}
+.row.swing::before{width:8px;background:#000}
+.row.swing{box-shadow:inset 0 0 0 2px #000,var(--elev)}
+:root[data-theme="dark"] .row.swing{box-shadow:inset 0 0 0 2px #000,0 0 0 1px var(--muted)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .row.swing{box-shadow:inset 0 0 0 2px #000,0 0 0 1px var(--muted)}}
 
 .login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}
 .loginbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:420px;width:100%;display:grid;gap:10px}
@@ -730,12 +734,20 @@ function render(){
   if(filterDiv) shown.sort((A,B)=>(divYield(B.l)??0)-(divYield(A.l)??0)); // filtre dividendes : meilleur rendement en tête
   const gain=l=>{const c=n(l.cours),p=n(l.pru);return Q(l)>0&&p&&c!=null&&c>p?c/p-1:null;}; // lignes détenues en plus-value : en tête, meilleur gain d'abord
   if(!filterDiv&&!filterBx) shown.sort((A,B)=>{const a=gain(A.l),b=gain(B.l);if(a!=null||b!=null)return (b!=null)-(a!=null)||(b??0)-(a??0);return grp(A.e)-grp(B.e)||(held(A.l)-held(B.l))||cmp(key(A),key(B))||String(A.l.nom).localeCompare(B.l.nom,"fr");});
+  // opération pic / rachat en cours (horizon.swing.actif, règle du 07/11/2026) : bande noire, toujours affichée en dernière ligne, quels que soient les filtres
+  const isSw=l=>!!l.horizon?.swing?.actif;
+  shown=shown.filter(x=>!isSw(x.l)).concat(ev.filter(x=>isSw(x.l)));
   if(!lines.length){$("#list").innerHTML=`<div class="empty">Aucune ligne suivie pour l'instant.<br>Ajoute une valeur, un ETF ou un fonds avec ton seuil d'achat ou de revente et une date limite.</div>`;return;}
   if(!shown.length){$("#list").innerHTML=`<div class="empty">Rien dans ce filtre.</div>`;return;}
   $("#list").innerHTML=shown.map(({l,e})=>{
     const c=n(l.cours), stale=l.coursDate&&days(l.coursDate,TODAY)>STALE_DAYS;
     const pl=(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
     const drop=isDrop(l), fall=isFalling(l);
+    if(isSw(l)) return rowHtml(l,e,c,stale,pl,drop,fall).replace('<button class="row"','<button class="row swing" title="Opération pic / rachat en cours"');
+    return rowHtml(l,e,c,stale,pl,drop,fall);}).join("");
+  requestAnimationFrame(fixBars);
+}
+function rowHtml(l,e,c,stale,pl,drop,fall){
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
       <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${qnt(l)}${sur(l)}${fct(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}${rvb(l)}${clm(l)}</div>
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
@@ -744,8 +756,7 @@ function render(){
       ${(()=>{const h=crit(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
       <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
       ${bar(l)}
-    </button>`;}).join("");
-  requestAnimationFrame(fixBars);
+    </button>`;
 }
 
 /* ---- feuille d'édition ---- */
