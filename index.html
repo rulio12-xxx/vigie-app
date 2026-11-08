@@ -338,6 +338,8 @@ function evaluate(l){
     let r;
     if(n(l.pru)!=null) r={cls:"p-ok",tag:"Achat fait",k:null,rk:3,txt:`Seuil d'achat <b>${eur1(p)}</b> · arbitrage déjà fait (PRU ${eur(+l.pru)})`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
+    else if(c<=p&&isAct(l)&&n(l.higgons?.note)!=null&&n(l.higgons.note)<=2&&!a.manuel&&!(l.lynch?.etoilePeg||l.lynch?.etoileDividende))
+      r={cls:"p-gone",tag:"Pari non retenu",k:null,rk:3,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais note ${l.higgons.note}★ sans étoile de Lynch : pas de signal d'achat (règle du 08/11/2026)`};
     else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}${limTxt(a)}`};
     else{
       const soon=dl!=null&&dl<=SOON_DAYS, near=(c-p)/p<NEAR_BUY; // écart mesuré par rapport au seuil, comme la routine
