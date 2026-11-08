@@ -320,6 +320,7 @@ function evaluate(l){
   const hasRule=n(a.prix)!=null||n(v.objectif)!=null||n(v.stop)!=null;
   const mo=x=>{const m=n(x?.modulation);return m==null?"":`${m>0?"+":"−"}${Math.round(Math.abs(m)*100)} %`;};
   const dA=(n(a.prixDerive)!=null?` <span title="${esc(a.baseDerive||"")}" style="cursor:help">(modulé ${mo(a)||"😈"} : base ${eur1(+a.prix)})</span>`:"")+(a.gardeFou?` <span title="${esc(a.gardeFou)}" style="cursor:help">(prix volontairement non relevé : ${/plus haut/.test(a.gardeFou)?"cours près de son plus haut de l'année":"l'action a déjà fortement rebondi"})</span>`:""), dV=n(v.objectifDerive)!=null?` <span title="${esc(v.baseDerive||"")}" style="cursor:help">(modulée ${mo(v)||"😈"} : base ${eur(+v.objectif)})</span>`:"";
+  if(c!=null&&!hasRule&&l.sansSeuil) return {rank:5,rules:[{cls:"p-ok",tag:"Trésorerie",txt:esc(l.sansSeuil),k:null}]}; // poche de trésorerie ou de refuge : pas de seuil (08/11/2026)
   if(c==null||!hasRule){return {rank:5,rules:[{cls:"p-ok",tag:"À configurer",txt:c==null?"Saisis le cours actuel":"Ajoute un seuil d'achat ou de vente",k:null}]};}
   const left=d=>d?days(TODAY,d):null;
   if(l.vendu&&n(l.rachat?.prix)!=null){
@@ -349,7 +350,7 @@ function evaluate(l){
     // ligne non détenue : la cible de revente est une information, jamais un signal de vente
     if(!(Q(l)>0)&&l.horizon?.type==="court"&&n(l.achat?.prix)){const pa=n(l.achat.prixDerive)??n(l.achat.prix); // pari non acheté : paliers du court terme depuis le prix d'achat (08/11/2026)
       r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`Pari une fois acheté à ${eur(pa)} : ½ à <b>${eur(pa*1.2)}</b> (+20 %) · reste à <b>${eur(pa*1.3)}</b> (+30 %)`};}
-    else if(!(Q(l)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${pct((o-c)/c)} vs cours)`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
+    else if(!(Q(l)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${(()=>{const pa=n(l.achat?.prixDerive)??n(l.achat?.prix);return pa?pct((o-pa)/pa)+" vs prix d'achat":pct((o-c)/c)+" vs cours";})()})`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
     else if(s!=null&&c<=s) r={cls:"p-sell",tag:"Stop atteint",k:"sell",rk:0,txt:`Cours sous le stop de <b>${eur(s)}</b> — vendre`};
     else if(o!=null&&c>=o) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Cible ${o!=null?`<b>${eur(o)}</b> `:""}non atteinte au ${fdate(v.avant)} — vendre ou prolonger ?`};
