@@ -316,7 +316,7 @@ const pct=v=>(v>0?"+":"")+(v*100).toLocaleString("fr-FR",{minimumFractionDigits:
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const TODAY=iso(new Date());
 const days=(a,b)=>Math.round((new Date(b+"T12:00")-new Date(a+"T12:00"))/864e5);
-const fdate=s=>s?new Date(s+"T12:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"2-digit"}):"";
+const fdate=s=>{if(!s)return "";const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1].slice(2)}`:new Date(s).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit"});}; // format 06/11/26 (08/11/2026)
 const n=v=>(v===""||v==null||isNaN(+v))?null:+v;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
