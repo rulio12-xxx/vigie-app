@@ -250,6 +250,9 @@ fieldset{border-radius:16px}
 .lyn{font-size:14px;margin-left:3px;cursor:help}.lyn.peg{color:#1A73E8}.lyn.div{color:#9334E6}
 :root[data-theme="dark"] .lyn.peg{color:#8AB4F8}:root[data-theme="dark"] .lyn.div{color:#C58AF9}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lyn.peg{color:#8AB4F8}:root:not([data-theme="light"]) .lyn.div{color:#C58AF9}}
+.lyn-t.peg{color:#1A73E8}.lyn-t.div{color:#9334E6}
+:root[data-theme="dark"] .lyn-t.peg{color:#8AB4F8}:root[data-theme="dark"] .lyn-t.div{color:#C58AF9}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lyn-t.peg{color:#8AB4F8}:root:not([data-theme="light"]) .lyn-t.div{color:#C58AF9}}
 
 .login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}
 .loginbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:420px;width:100%;display:grid;gap:10px}
@@ -408,7 +411,14 @@ function stars(l){
   const s=n(l.higgons?.note); if(s==null||s<1) return "";
   const k=Math.min(5,Math.round(s));
   return `<span class="stars" title="${/^Fonds/.test(l.higgons?.grille||"")?"Note fonds (12 mois face à l'indice)":"Note Quality Value (Higgons)"} : ${k}/5" aria-label="Note Higgons ${k} sur 5">${"★".repeat(k)}<span class="off">${"★".repeat(5-k)}</span></span>`;
-}function lynchStars(l){ // critères de Peter Lynch (08/11/2026) : ★ bleue = PEG < 1 · ★ violette = (croissance + rendement) ÷ PER ≥ 2
+}function lynchTxt(l){ // texte des critères de Lynch, dans la couleur de l'étoile (08/11/2026)
+  const y=l.lynch; if(!y)return ""; const f=v=>String(v).replace(".",",");
+  if(y.croissance==null) return `<div class="hq lynt"><span class="x">Lynch : ${esc(y.motif||"non calculé")}</span></div>`;
+  const g=(y.croissance*100).toFixed(1).replace(".",","), r=(y.rendement*100).toFixed(1).replace(".",",");
+  const t1=`${y.etoilePeg?"★":"✗"} Lynch PEG ${y.peg!=null?f(y.peg):"—"} (PER ${f(y.per)} ÷ croissance ${g} %/an, ${y.periode})${y.etoilePeg?" &lt; 1":""}`;
+  const t2=`${y.etoileDividende?"★":"✗"} Lynch dividende (${g} % + ${r} %) ÷ PER = ${f(y.pegDividende)}${y.etoileDividende?" ≥ 2":""}`;
+  return `<div class="hq lynt"><span class="${y.etoilePeg?"lyn-t peg":"x"}">${t1}</span> · <span class="${y.etoileDividende?"lyn-t div":"x"}">${t2}</span></div>`;}
+function lynchStars(l){ // critères de Peter Lynch (08/11/2026) : ★ bleue = PEG < 1 · ★ violette = (croissance + rendement) ÷ PER ≥ 2
   const y=l.lynch; if(!y)return "";const g=y.croissance!=null?(y.croissance*100).toFixed(1).replace(".",","):"";let h="";
   if(y.etoilePeg) h+=`<span class="lyn peg" title="Lynch : PEG ${String(y.peg).replace(".",",")} &lt; 1 (PER ${String(y.per).replace(".",",")} ÷ croissance du BPA ${g} %/an, ${y.periode})">★</span>`;
   if(y.etoileDividende) h+=`<span class="lyn div" title="Lynch : (croissance ${g} % + rendement ${(y.rendement*100).toFixed(1).replace(".",",")} %) ÷ PER ${String(y.per).replace(".",",")} = ${String(y.pegDividende).replace(".",",")} ≥ 2">★</span>`;
@@ -774,7 +784,7 @@ function rowHtml(l,e,c,stale,pl,drop,fall){
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
-      ${(()=>{const h=crit(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
+      ${(()=>{const h=crit(l)+lynchTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
       <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
       ${bar(l)}
     </button>`;
