@@ -347,7 +347,9 @@ function evaluate(l){
     const o=n(v.objectifDerive)??n(v.objectif), s=n(v.stop), dl=left(v.avant);
     let r;
     // ligne non détenue : la cible de revente est une information, jamais un signal de vente
-    if(!(Q(l)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${pct((o-c)/c)} vs cours)`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
+    if(!(Q(l)>0)&&l.horizon?.type==="court"&&n(l.achat?.prix)){const pa=n(l.achat.prixDerive)??n(l.achat.prix); // pari non acheté : paliers du court terme depuis le prix d'achat (08/11/2026)
+      r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`Pari une fois acheté à ${eur(pa)} : ½ à <b>${eur(pa*1.2)}</b> (+20 %) · reste à <b>${eur(pa*1.3)}</b> (+30 %)`};}
+    else if(!(Q(l)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${pct((o-c)/c)} vs cours)`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
     else if(s!=null&&c<=s) r={cls:"p-sell",tag:"Stop atteint",k:"sell",rk:0,txt:`Cours sous le stop de <b>${eur(s)}</b> — vendre`};
     else if(o!=null&&c>=o) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Cible ${o!=null?`<b>${eur(o)}</b> `:""}non atteinte au ${fdate(v.avant)} — vendre ou prolonger ?`};
@@ -384,7 +386,7 @@ function evaluate(l){
     out.push({cls:up?"p-buy":"p-warn",tag:up?"Creux passé : renforcer":"Guet du creux",k:up?"buy":null,rk:up?0:2,txt:`Plus bas suivi <b>${eur(+gc.bas)}</b> (${fdate(gc.basDate)}) · signal de renfort au-dessus de <b>${eur(sr)}</b> (rebond confirmé) · guet depuis le ${fdate(gc.depuis)}`});}
   if(Q(l)>0&&hz==="long"){
     out.forEach(r=>{if(r.tag==="Vendre"){r.tag="Vendre 1/3";r.txt+=" · long terme : vendre un tiers, laisser courir le reste";}});
-    const nt=n(l.higgons?.note); if(nt!=null&&nt<=2&&isAct(l)) out.push({cls:"p-warn",tag:"Note dégradée",k:"soonsell",rk:2,txt:`Long terme mais note ${nt}★ : la thèse Higgons ne tient plus — vendre ou passer en court terme ?`});
+    const nt=n(l.higgons?.note); if(nt!=null&&nt<=2&&isAct(l)&&l.horizon?.auto!==false) /* long terme choisi à la main : pas d'alerte (08/11/2026) */ out.push({cls:"p-warn",tag:"Note dégradée",k:"soonsell",rk:2,txt:`Long terme mais note ${nt}★ : la thèse Higgons ne tient plus — vendre ou passer en court terme ?`});
   }
   rank=Math.min(...out.map(r=>r.rk));
   return {rank,rules:out};
