@@ -173,5 +173,16 @@
       return db;
     }
   };
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { });
+  // mise à jour automatique de l'appli (09/11/2026) : à chaque retour sur la page et toutes les 15 min, le service worker vérifie
+  // s'il existe une nouvelle version ; quand elle prend la main, la page se recharge d'elle-même (une seule fois)
+  if ("serviceWorker" in navigator) {
+    const avait = !!navigator.serviceWorker.controller;
+    let recharge = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (avait && !recharge) { recharge = true; location.reload(); } });
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      const verif = () => reg.update().catch(() => { });
+      setInterval(() => { if (document.visibilityState === "visible") verif(); }, 15 * 60000);
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") verif(); });
+    }).catch(() => { });
+  }
 })();
