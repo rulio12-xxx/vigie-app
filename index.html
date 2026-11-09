@@ -307,7 +307,7 @@ const TYPES=["Actions","ETF","Fonds"];
 const isAct=l=>(!l.type||l.type==="Actions")&&l.env!=="PEE"&&l.env!=="Assurance vie"&&!String(l.higgons?.grille||"").startsWith("Fonds")&&!l.fonds;
 const envTot=e=>{if(n(especes?.[e])==null)return 0;let t=0;lines.forEach(x=>{if(x.env===e&&Q(x)>0&&n(x.cours))t+=Q(x)*x.cours;});return t?t+(n(especes?.[e])||0):0;};
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":(l.higgons||l.analyse?.annees)?"Actions":"ETF");
-let perfJ=null, coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterLy=null, filterOr=false, filterType="Actions", db=null, coll=null, editing=null;
+let perfJ=null, coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterLy=null, filterOr=false, filterType=null /* par défaut : tous les types (09/11/2026) */, db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
 const eur1=v=>eur(v,1);
@@ -790,7 +790,7 @@ function rowHtml(l,e,c,stale,pl,drop,fall){
       <div style="min-width:0"><div class="name">${esc(l.nom)} <span class="env">${esc(l.env)}</span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${lynchStars(l)}${qnt(l)}${sur(l)}${fct(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}${rvb(l)}${clm(l)}</div>
         <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · PRU ${eur(l.pru)}${n(l.qte)>0?' <span class="okin" title="Ligne achetée">👍</span>':""}`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
-        <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(l.coursHeure?" "+esc(l.coursHeure):""):""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
+        <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
       ${(()=>{const h=crit(l)+lynchTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
       <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
       ${bar(l)}
