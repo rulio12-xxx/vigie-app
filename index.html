@@ -266,7 +266,7 @@ fieldset{border-radius:16px}
 .loginbox label{display:grid;gap:4px;font-size:13px}.loginbox input{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 .loginbox button{font:inherit;font-weight:600;padding:10px;border:0;border-radius:8px;background:var(--ink);color:var(--surface);cursor:pointer}
 .loginbox .err{color:var(--down);font-size:13px}
-.btnRelever{display:inline-block;margin-top:6px;font:500 12px var(--f-body,inherit);background:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted);cursor:pointer}.btnRelever:disabled{opacity:.6}.progReleve{display:inline-block;vertical-align:middle;width:90px;height:6px;margin:6px 0 0 8px;border-radius:3px;background:var(--line);overflow:hidden}.progReleve[hidden]{display:none}.progReleve i{display:block;height:100%;width:0;background:var(--accent,#2e7d32);transition:width .8s linear}
+.hdl{display:flex;align-items:center;gap:10px}.hdb{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.hdl .btnRelever{margin-top:0;white-space:nowrap}.hdl h1,.hdl .sub{white-space:nowrap}@media (max-width:400px){.hdl h1{font-size:20px}.hdl .btnRelever{font-size:11px;padding:3px 8px}.hdl{gap:8px}}.btnRelever{display:inline-block;margin-top:6px;font:500 12px var(--f-body,inherit);background:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted);cursor:pointer}.btnRelever:disabled{opacity:.6}.progReleve{display:inline-block;vertical-align:middle;width:90px;height:6px;margin:6px 0 0 8px;border-radius:3px;background:var(--line);overflow:hidden}.progReleve[hidden]{display:none}.progReleve i{display:block;height:100%;width:0;background:var(--accent,#2e7d32);transition:width .8s linear}
 .syncbar{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0 24px}
 .syncbar button{font:inherit;background:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted);cursor:pointer}
 </style>
@@ -277,8 +277,7 @@ fieldset{border-radius:16px}
 <div class="wrap">
   <header>
     <div>
-      <h1>Vigie Patrimoine</h1>
-      <div class="sub" id="today"></div><button type="button" class="btnRelever" id="btnReleverHaut" onclick="vigieRelever()" title="Lance le robot (2-3 min, sans IA)">↻ Rafraîchir les cours</button>
+      <div class="hdl"><div><h1>Vigie Patrimoine</h1><div class="sub" id="today"></div></div><div class="hdb"><button type="button" class="btnRelever" id="btnReleverHaut" onclick="vigieRelever()" title="Lance le robot (2-3 min, sans IA)">↻ Rafraîchir les cours</button></div></div>
     </div>
     <div class="total"><div class="v" id="total" style="display:none">—</div><div class="pl" id="totalpl" style="white-space:normal;overflow-wrap:anywhere;max-width:100%"></div><div class="pl" id="perm"></div></div>
   </header>
