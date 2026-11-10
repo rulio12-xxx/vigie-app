@@ -427,6 +427,9 @@ function stars(l){
   const k=Math.min(5,Math.round(s));
   return `<span class="stars" title="${/^Fonds/.test(l.higgons?.grille||"")?"Note fonds (12 mois face à l'indice)":"Note Quality Value (Higgons)"} : ${k}/5" aria-label="Note Higgons ${k} sur 5">${"★".repeat(k)}<span class="off">${"★".repeat(5-k)}</span></span>`;
 }const isOr=l=>!!(l.quant?.facteurs?.orSensible||/gold|\bor physique/i.test(l.nom||"")); // filtre « Or » (08/11/2026) : sensibles à l'or + l'or lui-même
+function sortieTxt(l){ // valeur de sortie Vigie V, en observation (10/11/2026) : √(BPA N+1 × PER de sortie × objectif des analystes)
+  const x=l.sortieV;if(!x||!n(x.v))return "";const f=v=>String(v).replace(".",","),c=n(l.cours),e=c?(x.v/c-1):null;
+  return `<div class="hq" title="V = √(BPA ${esc(x.an)} ${eur(x.bpa)} × PER de sortie ${f(x.perSortie)} × objectif des analystes ${eur(x.consensus)}) ; PER de sortie = k ${f(x.k)} × (croissance ${f((x.croissance*100).toFixed(1))} % + rendement ${f((x.rendement*100).toFixed(1))} %), borné 10-20. Observation : n'agit sur aucun signal ; k s'affûte avec les ventes suivies à 3 mois.">Sortie V (observation) : <b>${eur(x.v)}</b>${e!=null?` · ${e>=0?"+":""}${f((e*100).toFixed(1))} %`:""} · PER de sortie ${f(x.perSortie)}</div>`;}
 function lynchTxt(l){ // texte des critères de Lynch, dans la couleur de l'étoile (08/11/2026)
   const y=l.lynch; if(!y)return ""; const f=v=>String(v).replace(".",",");
   if(y.croissance==null) return `<div class="hq lynt"><span class="x">Lynch : ${esc(y.motif||"non calculé")}</span></div>`;
@@ -820,7 +823,7 @@ function rowHtml(l,e,c,stale,pl,drop,fall){
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
       ${(()=>{const t=qnt(l)+sur(l)+fct(l)+dirig(l)+marq(l)+medal(l)+conc(l)+spk(l)+bx(l)+dcr(l)+drv(l)+rvb(l)+clm(l);return t?`<div class="tags">${t}</div>`:"";})()}
       <div class="code cl">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} part${l.qte>1?"s":""}`:""}${n(l.pru)?` · <span class="nw">PRU ${eur(l.pru)}${n(l.qte)>0?'&nbsp;<span class="okin" title="Ligne achetée">👍</span>':""}</span>`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div>
-      ${(()=>{const h=crit(l)+lynchTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
+      ${(()=>{const h=crit(l)+lynchTxt(l)+sortieTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
       <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
       ${bar(l)}
     </button>`;
