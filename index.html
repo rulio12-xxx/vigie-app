@@ -276,7 +276,7 @@ fieldset{border-radius:16px}
       <h1>Vigie Patrimoine</h1>
       <div class="sub" id="today"></div><button type="button" class="btnRelever" id="btnReleverHaut" onclick="vigieRelever()" title="Lance le robot (2-3 min, sans IA)">↻ Rafraîchir les cours</button>
     </div>
-    <div class="total"><div class="l">Valorisation suivie</div><div class="v" id="total">—</div><div class="pl" id="totalpl" style="white-space:normal;overflow-wrap:anywhere;max-width:100%"></div><div class="pl" id="perm"></div></div>
+    <div class="total"><div class="v" id="total" style="display:none">—</div><div class="pl" id="totalpl" style="white-space:normal;overflow-wrap:anywhere;max-width:100%"></div><div class="pl" id="perm"></div></div>
   </header>
   <div class="banner" id="banner" hidden></div>
   <div class="synth" id="synth"></div>
@@ -759,7 +759,11 @@ function render(){
     const path=pts.map((p,i)=>`${i?"L":"M"}${sx(p[0]).toFixed(1)},${sy(p[1].pea).toFixed(1)}`).join(""),last=ys[ys.length-1];
     spark=`<div class="pl" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:4px"><svg viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}" role="img" aria-label="Gain réel du PEA depuis le ${fdate(pts[0][0])}"><line x1="2" x2="${W-2}" y1="${sy(0).toFixed(1)}" y2="${sy(0).toFixed(1)}" stroke="currentColor" stroke-opacity=".25" stroke-dasharray="3 3"/><path d="${path}" fill="none" stroke="${last>=0?"var(--up)":"var(--down)"}" stroke-width="2" stroke-linejoin="round"/></svg><span>PEA depuis le ${fdate(pts[0][0])} : <b class="${last>=0?"pos":"neg"}">${pct(last)}</b> (titres + espèces − versements)</span></div>`;}
   // plus-values par enveloppe retirées (05/11/2026) : déjà dans le tableau de synthèse
-  $("#totalpl").innerHTML=(D?`<div title="Dividendes annuels estimés sur les lignes détenues">Dividendes attendus : <b>≈ ${eur(D,0)} par an</b></div>`:"")+spark;
+  // dividendes séparés par enveloppe (10/11/2026) : PEA d'abord, puis les autres (PEE : réinvestis dans le fonds)
+  const dEnv={};lines.filter(l=>!filterEnv||l.env===filterEnv).forEach(l=>{const v=divYear(l);if(v>0)dEnv[l.env]=(dEnv[l.env]||0)+v;});
+  const dOrd=Object.keys(dEnv).sort((a,b)=>(a==="PEA"?-1:b==="PEA"?1:dEnv[b]-dEnv[a]));
+  const dTxt=dOrd.map(e=>`${esc(e)} <b>≈ ${eur(dEnv[e],0)}</b>${e==="PEE"?" (réinvestis)":""}`).join(" · ");
+  $("#totalpl").innerHTML=(D?`<div title="Dividendes annuels estimés sur les lignes détenues, par enveloppe ; total ≈ ${eur(D,0)}">Dividendes attendus par an : ${dTxt}</div>`:"")+spark;
   // PER moyen du portefeuille (actions détenues, pondéré par la valeur ; moyenne harmonique = valeur totale ÷ bénéfices détenus)
   {const PER_OBJ=10;let V=0,E=0,k=0,x=0;lines.forEach(l=>{const q=Q(l),c=n(l.cours);if(!(q>0)||c==null||l.type==="ETF"||l.env==="PEE")return;const a=l.analyse||{},r=a.ratios||{},b=n(a.estimations?.[r.perBase]);let per=(a.devise||"EUR")==="EUR"&&b?c/b:n(r.per);if(per==null&&!b)return;if(!(per>0)){x++;return;}V+=q*c;E+=q*c/per;k++;});
    const P=E?V/E:null;$("#perm").innerHTML=P?`<span class="${P<PER_OBJ?"pos":"neg"}" title="PER moyen pondéré des ${k} actions détenues hors PEE (cours actuel ÷ BPA estimé de l'année de référence)${x?` · ${x} exclue${x>1?"s":""} (bénéfice négatif ou inconnu)`:""}">PER moyen ${P.toFixed(1).replace(".",",")}</span> · objectif &lt; ${PER_OBJ}`:"";}
