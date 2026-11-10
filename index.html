@@ -431,7 +431,7 @@ function lynchTxt(l){ // texte des critères de Lynch, dans la couleur de l'éto
   const y=l.lynch; if(!y)return ""; const f=v=>String(v).replace(".",",");
   if(y.croissance==null) return `<div class="hq lynt"><span class="x">Lynch : ${esc(y.motif||"non calculé")}</span></div>`;
   const g=(y.croissance*100).toFixed(1).replace(".",","), r=(y.rendement*100).toFixed(1).replace(".",",");
-  const t1=`${y.etoilePeg?"★":"✗"} Lynch PEG ${y.peg!=null?f(y.peg):"—"} (PER ${f(y.per)} ÷ croissance ${g} %/an, ${y.periode})${y.etoilePeg?" &lt; 1":""}${y.justePrix?` · juste prix L+ ${eur(y.justePrix)} · bon marché L++ ${eur(y.bonMarche)}`:""}`;
+  const t1=`${y.etoilePeg?"★":"✗"} Lynch PEG ${y.peg!=null?f(y.peg):"—"} (PER ${f(y.per)} ÷ croissance ${g} %/an, ${y.periode})${y.etoilePeg?" &lt; 1":""}${y.retournement?" depuis la dernière perte":""}${y.peuAnalystes?" (estimations de 1-2 analystes)":""}${y.justePrix?` · juste prix L+ ${eur(y.justePrix)}${y.methode?" (croissance lente : PER juste = croissance + rendement)":""} · bon marché L++ ${eur(y.bonMarche)}`:y.motif?` · ${esc(y.motif)}`:""}`;
   const t2=`${y.etoileDividende?"★":"✗"} Lynch dividende (${g} % + ${r} %) ÷ PER = ${f(y.pegDividende)}${y.etoileDividende?" ≥ 2":""}`;
   return `<div class="hq lynt"><span class="${y.etoilePeg?"lyn-t peg":"x"}">${t1}</span> · <span class="${y.etoileDividende?"lyn-t div":"x"}">${t2}</span></div>`;}
 function lynchStars(l){ // critères de Peter Lynch (08/11/2026) : ★ bleue = PEG < 1 · ★ violette = (croissance + rendement) ÷ PER ≥ 2
