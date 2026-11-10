@@ -762,8 +762,8 @@ function render(){
   // dividendes séparés par enveloppe (10/11/2026) : PEA d'abord, puis les autres (PEE : réinvestis dans le fonds)
   const dEnv={};lines.filter(l=>!filterEnv||l.env===filterEnv).forEach(l=>{const v=divYear(l);if(v>0)dEnv[l.env]=(dEnv[l.env]||0)+v;});
   const dOrd=Object.keys(dEnv).sort((a,b)=>(a==="PEA"?-1:b==="PEA"?1:dEnv[b]-dEnv[a]));
-  const valT=e=>lines.reduce((t,x)=>t+(x.env===e&&Q(x)>0&&n(x.cours)?Q(x)*x.cours:0),0); // valeur des titres de l'enveloppe
-  const dTxt=dOrd.map(e=>`${esc(e)} <b>≈ ${eur(dEnv[e],0)}</b>${e==="PEA"&&valT(e)?` (rendement ${(dEnv[e]/valT(e)*100).toFixed(1).replace(".",",")} %)`:""}${e==="PEE"?" (réinvestis)":""}`).join(" · ");
+  const valT=e=>lines.reduce((t,x)=>t+(x.env===e&&Q(x)>0&&n(x.cours)?Q(x)*x.cours:0),0); // valeur des titres de l'enveloppe ; rendement du PEA calculé sur titres + espèces (10/11/2026)
+  const dTxt=dOrd.map(e=>`${esc(e)} <b>≈ ${eur(dEnv[e],0)}</b>${e==="PEA"&&valT(e)?` (rendement ${(dEnv[e]/(valT(e)+(n(especes?.PEA)||0))*100).toFixed(1).replace(".",",")} %)`:""}${e==="PEE"?" (réinvestis)":""}`).join(" · ");
   $("#totalpl").innerHTML=(D?`<div title="Dividendes annuels estimés sur les lignes détenues, par enveloppe ; total ≈ ${eur(D,0)}">Dividendes attendus par an : ${dTxt}</div>`:"")+spark;
   // PER moyen du portefeuille (actions détenues, pondéré par la valeur ; moyenne harmonique = valeur totale ÷ bénéfices détenus)
   {const PER_OBJ=10;let V=0,E=0,k=0,x=0;lines.forEach(l=>{const q=Q(l),c=n(l.cours);if(!(q>0)||c==null||l.type==="ETF"||l.env==="PEE")return;const a=l.analyse||{},r=a.ratios||{},b=n(a.estimations?.[r.perBase]);let per=(a.devise||"EUR")==="EUR"&&b?c/b:n(r.per);if(per==null&&!b)return;if(!(per>0)){x++;return;}V+=q*c;E+=q*c/per;k++;});
