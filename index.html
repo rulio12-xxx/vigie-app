@@ -307,7 +307,7 @@ const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d
 const TYPES=["Actions","ETF","Fonds"];
 const isAct=l=>(!l.type||l.type==="Actions")&&l.env!=="PEE"&&l.env!=="Assurance vie"&&!String(l.higgons?.grille||"").startsWith("Fonds")&&!l.fonds;
 const envTot=e=>{if(n(especes?.[e])==null)return 0;let t=0;lines.forEach(x=>{if(x.env===e&&Q(x)>0&&n(x.cours))t+=Q(x)*x.cours;});return t?t+(n(especes?.[e])||0):0;};
-const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":(l.higgons||l.analyse?.annees)?"Actions":"ETF");
+const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":(l.fonds||String(l.higgons?.grille||"").startsWith("Fonds"))?"ETF":(l.higgons||l.analyse?.annees)?"Actions":"ETF");  // fonds/ETF notés selon la grille fonds : ETF (10/11/2026, REMX classé à tort en Actions)
 let perfJ=null, coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterLy=null, filterOr=false, filterType=null /* par défaut : tous les types (09/11/2026) */, db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
