@@ -124,6 +124,8 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .bar .ok{position:absolute;top:-4px;width:22px;height:22px;z-index:1;transform:translateX(-50%);color:var(--thumb);background:var(--up-soft);border-radius:50%;padding:3px;pointer-events:none}
 .okin{font-size:12px;filter:hue-rotate(0deg)}
 .nw{white-space:nowrap}
+.tags{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;min-width:0}  /* 10/11/2026 : pastilles sur toute la largeur de la carte */
+.code.cl{grid-column:1/-1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-2px}  /* 10/11/2026 : code · parts · PRU 👍 sur toute la largeur, une seule ligne */
 .nmw{min-width:0}.nmw .env{vertical-align:2px;white-space:nowrap}  /* 10/11/2026 : 👍 sur la ligne du PRU, enveloppe à côté du nom */
 .bar .ok svg{display:block;width:16px;height:16px}
 .bar .now{position:absolute;top:13.5px;width:9px;height:9px;border-radius:50%;background:var(--ink);transform:translateX(-4.5px)}
@@ -803,10 +805,11 @@ function render(){
 }
 function rowHtml(l,e,c,stale,pl,drop,fall){
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
-      <div style="min-width:0"><div class="name"><span class="nmw">${esc(l.nom)}&nbsp;<span class="env">${esc(l.env)}</span></span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${lynchStars(l)}${qnt(l)}${sur(l)}${fct(l)}${dirig(l)}${marq(l)}${medal(l)}${conc(l)}${spk(l)}${bx(l)}${dcr(l)}${drv(l)}${rvb(l)}${clm(l)}</div>
-        <div class="code">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} parts`:""}${n(l.pru)?` · <span class="nw">PRU ${eur(l.pru)}${n(l.qte)>0?'&nbsp;<span class="okin" title="Ligne achetée">👍</span>':""}</span>`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div></div>
+      <div style="min-width:0"><div class="name"><span class="nmw">${esc(l.nom)}&nbsp;<span class="env">${esc(l.env)}</span></span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${lynchStars(l)}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
+      ${(()=>{const t=qnt(l)+sur(l)+fct(l)+dirig(l)+marq(l)+medal(l)+conc(l)+spk(l)+bx(l)+dcr(l)+drv(l)+rvb(l)+clm(l);return t?`<div class="tags">${t}</div>`:"";})()}
+      <div class="code cl">${esc(l.code||"")}${n(l.qte)?` · ${l.qte.toLocaleString("fr-FR")} part${l.qte>1?"s":""}`:""}${n(l.pru)?` · <span class="nw">PRU ${eur(l.pru)}${n(l.qte)>0?'&nbsp;<span class="okin" title="Ligne achetée">👍</span>':""}</span>`:""}${l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:""}</div>
       ${(()=>{const h=crit(l)+lynchTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
       <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
       ${bar(l)}
