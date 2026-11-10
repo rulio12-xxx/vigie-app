@@ -125,6 +125,7 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .okin{font-size:12px;filter:hue-rotate(0deg)}
 .nw{white-space:nowrap}
 .fit1{white-space:nowrap;display:block}span.fit1{display:inline-block}
+#types{gap:5px}#types .chip,#envs .chip,#divs .chip{padding:.4em .62em;gap:.4em;white-space:nowrap;flex:0 0 auto}#envs,#divs{gap:5px}  /* types sur une ligne (10/11/2026) */
 .tags{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;min-width:0}  /* 10/11/2026 : pastilles sur toute la largeur de la carte */
 .code.cl{grid-column:1/-1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-2px}  /* 10/11/2026 : code · parts · PRU 👍 sur toute la largeur, une seule ligne */
 .nmw{min-width:0}.nmw .env{vertical-align:2px;white-space:nowrap}  /* 10/11/2026 : 👍 sur la ligne du PRU, enveloppe à côté du nom */
@@ -312,7 +313,12 @@ const TYPES=["Actions","ETF","Fonds"];
 const isAct=l=>(!l.type||l.type==="Actions")&&l.env!=="PEE"&&l.env!=="Assurance vie"&&!String(l.higgons?.grille||"").startsWith("Fonds")&&!l.fonds;
 const envTot=e=>{if(n(especes?.[e])==null)return 0;let t=0;lines.forEach(x=>{if(x.env===e&&Q(x)>0&&n(x.cours))t+=Q(x)*x.cours;});return t?t+(n(especes?.[e])||0):0;};
 // lignes de l'en-tête sur une seule ligne (10/11/2026) : police d'origine, réduite seulement si la ligne déborde de l'écran
-function fitLines(){const W=document.querySelector("header")?.getBoundingClientRect().width||innerWidth;document.querySelectorAll(".fit1").forEach(e=>{e.style.fontSize="";const r=document.createRange();r.selectNodeContents(e);const w=r.getBoundingClientRect().width;if(w>W){const f=parseFloat(getComputedStyle(e).fontSize);e.style.fontSize=Math.floor(f*W/w*10)/10+"px";}});}
+// rangées de filtres sur un nombre de lignes fixé (10/11/2026) : police réduite par pas de 0,5 px tant que ça déborde (minimum 9 px)
+function fitRows(id,max,sel){const c=document.getElementById(id);if(!c||!c.children.length)return;const ch=[...c.children],m=sel?ch.filter(x=>x.matches(sel)):ch;ch.forEach(x=>{x.style.fontSize="";x.querySelectorAll(".num").forEach(y=>y.style.fontSize="");});
+  const nl=()=>{const ys=m.map(x=>{const r=x.getBoundingClientRect();return r.top+r.height/2;}).sort((a,b)=>a-b);return ys.filter((y,i)=>!i||y-ys[i-1]>6).length;};let f=parseFloat(getComputedStyle(m[0]||ch[0]).fontSize);
+  while(nl()>max&&f>9){f-=0.5;(sel===".dlab,[data-div]"?m:ch).forEach(x=>{x.style.fontSize=f+"px";x.querySelectorAll(".num").forEach(y=>y.style.fontSize=f+"px");});}}
+function fitLines(){const W=document.querySelector("header")?.getBoundingClientRect().width||innerWidth;fitRows("types",1,"[data-type]");fitRows("envs",2);fitRows("divs",2,".dlab,[data-div]");
+  document.querySelectorAll(".fit1").forEach(e=>{e.style.fontSize="";const r=document.createRange();r.selectNodeContents(e);const w=r.getBoundingClientRect().width;if(w>W){const f=parseFloat(getComputedStyle(e).fontSize);e.style.fontSize=Math.floor(f*W/w*10)/10+"px";}});}
 addEventListener("resize",()=>fitLines());
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":(l.fonds||String(l.higgons?.grille||"").startsWith("Fonds"))?"ETF":(l.higgons||l.analyse?.annees)?"Actions":"ETF");  // fonds/ETF notés selon la grille fonds : ETF (10/11/2026, REMX classé à tort en Actions)
 let perfJ=null, coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterLy=null, filterOr=false, filterType=null /* par défaut : tous les types (09/11/2026) */, db=null, coll=null, editing=null;
@@ -721,8 +727,8 @@ function render(){
   // dividendes : médaille au moins égale au niveau choisi (rendement au cours actuel)
   const base=lines.filter(l=>(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv));
   const nDiv=k=>base.filter(l=>{const y=divYield(l);return y!=null&&y>=DIVMIN[k];}).length;
-  $("#divs").innerHTML=`<span style="font:500 13px var(--f-body);color:var(--muted);align-self:center;margin-right:2px">Dividendes</span>`+
-    [["or","Or ≥ 6 %","m-or"],["argent","Argent et + ≥ 4 %","m-argent"],["bronze","Bronze et + ≥ 2 %","m-bronze"]].map(([k,t,c])=>`<button class="chip" type="button" data-div="${k}" aria-pressed="${filterDiv===k}"><span class="med ${c}" style="padding:0 4px;background:none">●</span>${t} <span class="num">${nDiv(k)}</span></button>`).join("")+
+  $("#divs").innerHTML=`<span class="dlab" style="font:500 13px var(--f-body);color:var(--muted);align-self:center;margin-right:2px">Dividendes</span>`+
+    [["or","Or ≥ 6 %","m-or"],["argent","Argent ≥ 4 %","m-argent"],["bronze","Bronze ≥ 2 %","m-bronze"]].map(([k,t,c])=>`<button class="chip" type="button" data-div="${k}" aria-pressed="${filterDiv===k}"><span class="med ${c}" style="padding:0 4px;background:none">●</span>${t} <span class="num">${nDiv(k)}</span></button>`).join("")+
     `<button class="chip" type="button" id="fbx" aria-pressed="${filterBx}" title="Toutes les lignes en baisse, quel que soit le niveau (1 à 4)" style="margin-left:8px"><span style="color:#6d28d9;font-weight:700">↘</span> Baisses <span class="num">${base.filter(l=>bxN(l)>0).length}</span></button>`+
     `<button class="chip" type="button" id="fsv" aria-pressed="${filterSv}" title="Actions 4-5★ en survente (RSI 14 < 35)"><span style="color:var(--buy);font-weight:700">↯</span> Survente <span class="num">${base.filter(isSv).length}</span></button>`+
     `<button class="chip" type="button" id="fbuy" aria-pressed="${filterMine==="non"}" title="Lignes que tu ne possèdes pas" style="margin-left:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M2 3h3l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/></svg> À acheter <span class="num">${ev.filter(x=>(!filterType||typeOf(x.l)===filterType)&&(!filterEnv||x.l.env===filterEnv)&&!mine(x)).length}</span></button>`+
