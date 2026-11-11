@@ -400,13 +400,13 @@ function evaluate(l){
   if(Q(l)>0&&pr&&hz==="court"&&isAct(l)){
     const g=c/pr-1, ech=l.horizon.date?days(TODAY,new Date(Date.parse(l.horizon.date)+182*864e5).toISOString().slice(0,10)):null;
     const oc=n(v.objectifDerive)??n(v.objectif);  // règle du 11/11/2026 : pari = tout vendre à +20 % (plus de moitié / reste à +30 %)
-    const base=`Court terme : tout au surachat (RSI > 70) en gain · tout à <b>${eur(pr*1.2)}</b> (+20 %)${oc!=null?` · cible ${eur(oc)} (repère)`:""} · après 6 mois, tout vendre dès <b>${eur(pr*1.08)}</b> (+8 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
+    const base=`Court terme : tout à <b>${eur(pr*1.2)}</b> (+20 %), ou à <b>${eur(pr*1.15)}</b> (+15 %) si RSI > 80${oc!=null?` · cible ${eur(oc)} (repère)`:""} · après 6 mois, tout vendre dès <b>${eur(pr*1.08)}</b> (+8 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
     let r;
-    if(g>0&&l.quant?.surachat) r={cls:"p-sell",tag:"Vendre (surachat)",k:"sell",rk:0,txt:base+` · RSI ${Math.round(l.quant.rsi14)} > 70 : sortie complète`};
+    if(g>=0.15&&rsi80(l)) r={cls:"p-sell",tag:"Vendre (+15 %)",k:"sell",rk:0,txt:base+` · RSI ${Math.round(l.quant.rsi14)} > 80 : sortie complète`};
     else if(g>=0.20) r={cls:"p-sell",tag:"Vendre (+20 %)",k:"sell",rk:0,txt:base};
     else if(ech!=null&&ech<=0&&g>=0.08) r={cls:"p-sell",tag:"Tout vendre (+8 %)",k:"sell",rk:0,txt:base};
     else if(ech!=null&&ech<=0) r={cls:"p-gone",tag:"6 mois : attendre +8 %",k:null,rk:2,txt:base};
-    else{const near=c>=pr*1.2/(1+NEAR_PCT);r={cls:near?"p-warn":"p-ok",tag:near?"Presque à vendre":"Court terme",k:near?"soonsell":null,rk:near?2:3,txt:base};}
+    else{const near=c>=pr*kV(l)/(1+NEAR_PCT);r={cls:near?"p-warn":"p-ok",tag:near?"Presque à vendre":"Court terme",k:near?"soonsell":null,rk:near?2:3,txt:base};}
     out.push(r);
     if(g<=-0.30) out.push({cls:"p-warn",tag:"Revoir la thèse",k:"review",rk:1,txt:`Perte ${pct(g)} sur un pari : vérifier les nouvelles et la trésorerie avant de décider (pas de vente automatique)`});
     const te=envTot(l.env), vl=Q(l)*c;
