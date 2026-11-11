@@ -136,12 +136,35 @@
       const r = await fetch(`${api}/dispatches`, { method: "POST", headers: { ...entetes(c), "Content-Type": "application/json" }, body: JSON.stringify({ ref: c.branch }) });
       if (r.status === 403 || r.status === 404) { fin("jeton sans droit « Actions : read and write »"); bandeau("Rafraîchir les cours : ajoute le droit « Actions : read and write » à ton jeton GitHub (même jeton, rien à recoller)."); return; }
       if (!r.ok) throw new Error(`GitHub ${r.status}`);
-      for (let i = 0; i < 40; i++) {           // jusqu'à 6 min 40
-        await new Promise(ok => setTimeout(ok, 10000));
+      // cours en temps réel pendant le relevé (11/11/2026) : le robot publie d'abord donnees/marche/cours.json ;
+      // l'appli l'interroge toutes les 5 s et reporte aussitôt les nouveaux cours sur les lignes affichées (seuils et signaux suivent à la fin).
+      const urlCours = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/donnees/marche/cours.json?ref=${c.branch}`;
+      let etagC = null, vuReleve = data?.etat?.releve || "", nbMaj = 0;
+      const coursDirect = async () => {
+        try {
+          const h = { ...entetes(c), Accept: "application/vnd.github.raw+json" }; if (etagC) h["If-None-Match"] = etagC;
+          const r = await fetch(urlCours, { headers: h, cache: "no-store" });
+          if (r.status !== 200) return;
+          etagC = r.headers.get("ETag");
+          const cj = await r.json(); const L = cj.lignes || {}, d = data?.lignes || {};
+          if (!cj.releve || cj.releve <= vuReleve) return;
+          let k = 0;
+          for (const [id, q] of Object.entries(L)) {
+            const l = d[id]; if (!l || q.cours == null || l.code === "FCPE" || l.vl || l.env === "PEE" || l.suivi?.facteur || (q.devise && q.devise !== "EUR")) continue;
+            if (l.cours !== q.cours || l.coursHeure !== q.heure) { l.cours = q.cours; l.coursDate = q.date; l.coursHeure = q.heure; l.tempsReel = false; k++; }
+          }
+          vuReleve = cj.releve;
+          if (k) { nbMaj = k; prevenir(); etat(`cours affichés en direct : ${k} lignes (${cj.releve.slice(11, 16)}) · seuils en cours de calcul`); }
+        } catch (_) {}
+      };
+      for (let i = 0; i < 80; i++) {           // jusqu'à 6 min 40, toutes les 5 s
+        await new Promise(ok => setTimeout(ok, 5000));
+        await coursDirect();
+        if (i % 2) continue;
         const q = await fetch(`${api}/runs?event=workflow_dispatch&per_page=1`, { headers: entetes(c), cache: "no-store" });
         const run = q.ok ? (await q.json()).workflow_runs?.[0] : null;
         if (run && Date.parse(run.created_at) >= depart) {
-          etat(`relevé : ${run.status === "completed" ? "terminé" : "en cours"} (${i * 10 + 10} s)`);
+          if (!nbMaj) etat(`relevé : ${run.status === "completed" ? "terminé" : "en cours"} (${i * 5 + 5} s)`);
           try {
             const j = await fetch(run.jobs_url, { headers: entetes(c), cache: "no-store" });
             const st = j.ok ? ((await j.json()).jobs || []).flatMap(x => x.steps || []) : [];
