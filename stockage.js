@@ -139,7 +139,8 @@
       // cours en temps réel pendant le relevé (11/11/2026) : le robot publie d'abord donnees/marche/cours.json ;
       // l'appli l'interroge toutes les 5 s et reporte aussitôt les nouveaux cours sur les lignes affichées (seuils et signaux suivent à la fin).
       const urlCours = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/donnees/marche/cours.json?ref=${c.branch}`;
-      let etagC = null, vuReleve = data?.etat?.releve || "", nbMaj = 0;
+      let etagC = null, nbMaj = 0, vuCle = "";
+      const releve0 = data?.etat?.releve || "";
       const coursDirect = async () => {
         try {
           const h = { ...entetes(c), Accept: "application/vnd.github.raw+json" }; if (etagC) h["If-None-Match"] = etagC;
@@ -147,14 +148,15 @@
           if (r.status !== 200) return;
           etagC = r.headers.get("ETag");
           const cj = await r.json(); const L = cj.lignes || {}, d = data?.lignes || {};
-          if (!cj.releve || cj.releve <= vuReleve) return;
+          const cle = `${cj.releve}#${cj.partiel || 0}`;
+          if (!cj.releve || cj.releve < releve0 || cle === vuCle) return;
           let k = 0;
           for (const [id, q] of Object.entries(L)) {
             const l = d[id]; if (!l || q.cours == null || l.code === "FCPE" || l.vl || l.env === "PEE" || l.suivi?.facteur || (q.devise && q.devise !== "EUR")) continue;
             if (l.cours !== q.cours || l.coursHeure !== q.heure) { l.cours = q.cours; l.coursDate = q.date; l.coursHeure = q.heure; l.tempsReel = false; k++; }
           }
-          vuReleve = cj.releve;
-          if (k) { nbMaj = k; prevenir(); etat(`cours affichés en direct : ${k} lignes (${cj.releve.slice(11, 16)}) · seuils en cours de calcul`); }
+          vuCle = cle;
+          if (k) { nbMaj += k; prevenir(); etat(`cours en direct : ${nbMaj} lignes mises à jour${cj.partiel ? " (relevé en cours)" : ""} · seuils en cours de calcul`); }
         } catch (_) {}
       };
       for (let i = 0; i < 80; i++) {           // jusqu'à 6 min 40, toutes les 5 s
