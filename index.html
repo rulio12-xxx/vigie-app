@@ -124,7 +124,8 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .bar .ok{position:absolute;top:-4px;width:22px;height:22px;z-index:1;transform:translateX(-50%);color:var(--thumb);background:var(--up-soft);border-radius:50%;padding:3px;pointer-events:none}
 .okin{font-size:12px;filter:hue-rotate(0deg)}
 .nw{white-space:nowrap}
-.tick{font:600 11px var(--f-mono,ui-monospace,monospace);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px;white-space:nowrap;align-self:center}  /* 11/11/2026 : mnémonique dans la zone des étoiles */
+.mnemo{font:600 11px var(--f-mono,ui-monospace,monospace);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px;white-space:nowrap;align-self:center}  /* 11/11/2026 : mnémonique dans la zone des étoiles */
+.bar .grad{position:absolute;top:20px;width:1px;height:5px;background:var(--muted);opacity:.7;transform:translateX(-.5px)}  /* règle graduée PRU +10/+20/+30 % (11/11/2026) */
 .fit1{white-space:nowrap;display:block}span.fit1{display:inline-block}
 #types{gap:5px}#types .chip,#envs .chip,#divs .chip{padding:.4em .62em;gap:.4em;white-space:nowrap;flex:0 0 auto}#envs{gap:5px}  /* types sur une ligne (10/11/2026) */
 #divs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}#divs .chip{justify-content:center;overflow:hidden;min-width:0;padding:.4em .3em}#divs .dlab{display:flex;align-items:center;justify-content:center;margin:0!important}  /* 11/11/2026 : 15 boutons en grille 3 × 5, colonnes alignées */
@@ -665,20 +666,22 @@ function bar(l){
   const m10=violet(l), prot=isProt(l), vlab=prot?"PRU0%":"−10%", hg=n(l.higgons?.seuil)>0?n(l.higgons.seuil):null;
   // repères Lynch (08/11/2026) : L+ = juste prix (PEG 1), L++ = bon marché (PEG 0,5), affichés s'ils restent entre 0,3 et 3 × le cours
   const inR=v=>v!=null&&v>0.3*c&&v<3*c?v:null, l1=inR(n(l.lynch?.justePrix)), l2=inR(n(l.lynch?.bonMarche));
-  const pts=[c,a,o,p,m10,hg,l1,l2].filter(x=>x!=null); if(pts.length<2) return "";
+  const held=p!=null&&n(l.qte)>0&&!prot, p30=held?p*1.3:null;  // règle graduée (11/11/2026) : PRU +10, +20, +30 %
+  const pts=[c,a,o,p,m10,hg,l1,l2,p30].filter(x=>x!=null); if(pts.length<2) return "";
   const lo=Math.min(...pts)*0.96, hi=Math.max(...pts)*1.04, pos=v=>(v-lo)/(hi-lo)*100, x=v=>pos(v).toFixed(2)+"%";
   const short=v=>v.toLocaleString("fr-FR",{maximumFractionDigits:v<10?2:v<1000?1:0});
   let h='<div class="track"></div>';
   if(a!=null) h+=`<div class="zone" style="left:0;width:${x(a)};background:var(--buy-soft)"></div>`;
   const thumb=left=>`<div class="ok" style="left:${left}" title="Ligne achetée"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg></div>`;
   if(o!=null) h+=`<div class="zone" style="left:${x(o)};right:0;background:var(--sell-soft)"></div>`;
+  if(held) [1.1,1.2,1.3].forEach(k=>{h+=`<div class="grad" style="left:${x(p*k)};${k===1.3?"height:8px;opacity:1":""}" title="PRU +${Math.round((k-1)*100)} %"></div>`;});
   // repères : un niveau par étiquette, décalés quand deux repères sont trop proches
-  const marks=[["achat",a,"var(--buy)"],...(prot?[]:[["PRU",p,"var(--muted)"]]),[vlab,m10,"var(--drop)"],["cible",o,"var(--sell)"],["H",hg,"var(--hig)"],["L+",l1,"var(--lyn)"],["L++",l2,"var(--lyn)"]].filter(m=>m[1]!=null).sort((m,k)=>m[1]-k[1]);
+  const marks=[["achat",a,"var(--buy)"],...(prot?[]:[["PRU",p,"var(--muted)"]]),[vlab,m10,"var(--drop)"],["cible",o,"var(--sell)"],["H",hg,"var(--hig)"],["L+",l1,"var(--lyn)"],["L++",l2,"var(--lyn)"],["+30%",p30,"var(--muted)"]].filter(m=>m[1]!=null).sort((m,k)=>m[1]-k[1]);
   // étiquettes : passage sur une 2e ligne quand deux libellés se chevaucheraient (largeur estimée, barre ≈ 360 px)
   let lastX=-99,lastW=0,row=0,two=false;
   marks.forEach(([lab,v,col])=>{
     const px=pos(v);
-    const dash=(lab==="PRU"||lab===vlab)?";background:none;border-left:2px dashed "+col:(lab==="H"||lab==="L+"||lab==="L++")?";background:none;border-left:2px dotted "+col:"";
+    const dash=(lab==="PRU"||lab===vlab)?";background:none;border-left:2px dashed "+col:(lab==="H"||lab==="L+"||lab==="L++"||lab==="+30%")?";background:none;border-left:2px dotted "+col:"";
     const ref=p??c, gain=lab==="objectif"&&ref?` · ${pct((v-ref)/ref)}${p==null?" vs cours":""}`:"", m=gain?(p==null?100:72):46;
     const txt=`${lab} ${lab==="achat"||lab==="H"||lab==="L+"||lab==="L++"?v.toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1}):short(v)}${gain}`, w=txt.length*6.2, cx=Math.min(Math.max(px*3.4,m),340-m);
     row=((cx-lastX)<(w+lastW)/2+8)?1-row:0; lastX=cx; lastW=w; if(row) two=true;
@@ -830,7 +833,7 @@ function render(){
 }
 function rowHtml(l,e,c,stale,pl,drop,fall){
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
-      <div style="min-width:0"><div class="name"><span class="nmw">${esc(l.nom)}&nbsp;<span class="env">${esc(l.env)}</span></span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${lynchStars(l)}${l.code&&String(l.code).length<=8?`<span class="tick" title="Mnémonique">${esc(l.code)}</span>`:""}</div></div>
+      <div style="min-width:0"><div class="name"><span class="nmw">${esc(l.nom)}&nbsp;<span class="env">${esc(l.env)}</span></span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${lynchStars(l)}${l.code&&String(l.code).length<=8?`<span class="mnemo" title="Mnémonique">${esc(l.code)}</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
       ${(()=>{const t=qnt(l)+sur(l)+fct(l)+dirig(l)+marq(l)+medal(l)+conc(l)+spk(l)+bx(l)+dcr(l)+drv(l)+rvb(l)+clm(l);return t?`<div class="tags">${t}</div>`:"";})()}
