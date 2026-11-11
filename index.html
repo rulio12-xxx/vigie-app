@@ -321,7 +321,7 @@ function fitLines(){const W=document.querySelector("header")?.getBoundingClientR
   document.querySelectorAll(".fit1").forEach(e=>{e.style.fontSize="";const r=document.createRange();r.selectNodeContents(e);const w=r.getBoundingClientRect().width;if(w>W){const f=parseFloat(getComputedStyle(e).fontSize);e.style.fontSize=Math.floor(f*W/w*10)/10+"px";}});}
 addEventListener("resize",()=>fitLines());
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":(l.fonds||String(l.higgons?.grille||"").startsWith("Fonds"))?"ETF":(l.higgons||l.analyse?.annees)?"Actions":"ETF");  // fonds/ETF notés selon la grille fonds : ETF (10/11/2026, REMX classé à tort en Actions)
-let perfJ=null, coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterLy=null, filterOr=false, filterType=null /* par défaut : tous les types (09/11/2026) */, db=null, coll=null, editing=null;
+let calib=null, perfJ=null, coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterLy=null, filterOr=false, filterType=null /* par défaut : tous les types (09/11/2026) */, db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
 const eur1=v=>eur(v,1);
@@ -789,6 +789,9 @@ function render(){
    // taille moyenne des lignes (10/11/2026) : valeur des titres détenus hors PEE / assurance vie ÷ nombre de lignes ; objectif > 200 € par ligne (frais de courtage)
    const LIG_OBJ=200,lv=lines.filter(l=>Q(l)>0&&n(l.cours)!=null&&l.env!=="PEE"&&l.env!=="Assurance vie").map(l=>({l,v:Q(l)*l.cours})),pt=lv.filter(x=>x.v<LIG_OBJ).sort((a,b)=>a.v-b.v);
    if(lv.length){const m=lv.reduce((t,x)=>t+x.v,0)/lv.length;$("#perm").innerHTML+=`<div class="fit1"><span class="${m>LIG_OBJ?"pos":"neg"}" title="Valeur moyenne des ${lv.length} lignes détenues (PEA, CTO)${pt.length?` · sous ${LIG_OBJ} € : ${pt.map(x=>`${esc(x.l.nom)} ${eur(x.v,0)}`).join(", ")}`:""}">Ligne moyenne ${eur(m,0)}</span> · objectif &gt; ${LIG_OBJ} € par ligne${pt.length?` · <b class="neg">${pt.length} ligne${pt.length>1?"s":""} sous</b>`:""}</div>`;}}
+   // calibrateur de vente (11/11/2026) : gain moyen des ventes + ce que les titres ont gagné ensuite → objectif de gain à la vente
+   {const cb=calib;if(cb&&cb.ventes?.length){const f=x=>(x>=0?"+":"")+String((x*100).toFixed(1)).replace(".",",")+" %";
+    $("#perm").innerHTML+=`<div class="fit1" title="${cb.ventes.map(v=>`${esc(v.nom)} ${fdate(v.date)} : ${f(v.gain)} à la vente, ${f(v.apres)} depuis`).join(" · ")} (${cb.ventes.length} vente${cb.ventes.length>1?"s":""} d'actions ; « ensuite » figé à 90 jours ; objectif = (1 + gain moyen) × (1 + gain ensuite) − 1)">Ventes : gain moyen <b class="${cb.gainMoyen>=0?"pos":"neg"}">${f(cb.gainMoyen)}</b> · ${f(cb.apresMoyen)} ensuite · objectif ≈ <b>${f(cb.objectif)}</b></div>`;}}
    fitLines();
   // lignes
   let shown=ev.filter(inScope).filter(({l,e})=>!filterSig||(filterSig==="drop"?isDrop(l):filterSig==="hg"?isHg(l):e.rules.some(r=>r.k===filterSig)));
@@ -978,6 +981,7 @@ window.addEventListener("pageshow",e=>{if(e.persisted&&typeof window.subscribe==
     try{unsubs.push(db.collection("journal").doc("readme").onSnapshot(d=>{const r=d.exists?d.data():null,box=$("#readme");if(!box)return;if(!r||!r.md){box.hidden=true;return;}box.hidden=false;$("#readmeDate").textContent=r.date?`mis à jour le ${fdate(r.date)}`:"";try{$("#readmeBody").innerHTML=window.marked?marked.parse(r.md):`<pre>${esc(r.md)}</pre>`;}catch{$("#readmeBody").innerHTML=`<pre>${esc(r.md)}</pre>`;}},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("coherence").onSnapshot(d=>{coh=d.exists?d.data():null;renderCoh();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("perfJour").onSnapshot(d=>{perfJ=d.exists?d.data():null;render();},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("calibrateur").onSnapshot(d=>{calib=d.exists?d.data():null;render();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("mensuel").onSnapshot(d=>{mens=d.exists?d.data():null;renderMens();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("transactions").onSnapshot(d=>{txs=d.exists?d.data():null;renderTx();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("especes").onSnapshot(d=>{especes=d.exists?d.data():null;render();},()=>{}));}catch{}
