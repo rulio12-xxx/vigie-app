@@ -382,6 +382,9 @@ function evaluate(l){
     else if(!(Q(l)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${(()=>{const pa=n(l.achat?.prixDerive)??n(l.achat?.prix);return pa?pct((o-pa)/pa)+" vs prix d'achat":pct((o-c)/c)+" vs cours";})()})`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
     else if(s!=null&&c<=s) r={cls:"p-sell",tag:"Stop atteint",k:"sell",rk:0,txt:`Cours sous le stop de <b>${eur(s)}</b> — vendre`};
     else if(o!=null&&c>=o) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
+    // règle du 11/11/2026 : action détenue → « Vendre » dès +20 % sur le PRU, « Presque à vendre » à moins de NEAR_PCT ; la cible reste affichée comme repère
+    else if(p20(l)!=null&&c>=p20(l)) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`+20 % atteint : ${pct((c-l.pru)/l.pru)} vs PRU (seuil <b>${eur(p20(l))}</b>)${o!=null?` · cible ${eur(o)} (repère, encore ${pct((o-c)/c)})`:""}`};
+    else if(p20(l)!=null&&(p20(l)-c)/p20(l)<NEAR_PCT) r={cls:"p-warn",tag:"Presque à vendre",k:"soonsell",rk:2,txt:`+20 % à <b>${eur(p20(l))}</b> · encore ${pct((p20(l)-c)/c)}${o!=null?` · cible ${eur(o)} (repère)`:""}`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Cible ${o!=null?`<b>${eur(o)}</b> `:""}non atteinte au ${fdate(v.avant)} — vendre ou prolonger ?`};
     else{
       const dist=o!=null?(o-c)/c:null, soon=dl!=null&&dl<=SOON_DAYS, nearO=o!=null&&(o-c)/o<NEAR_PCT, nearS=s!=null&&(c-s)/s<NEAR_PCT, near=nearO||nearS;
@@ -660,6 +663,8 @@ function markProtected(){ // mémorise le cliquet dans la base quand une ligne p
 const stripe={0:"var(--buy)",1:"var(--gone)",2:"var(--warn)",3:"transparent",5:"var(--line)"};
 
 /* ---- barre de position : stop · seuil d'achat · cours · objectif ---- */
+// seuil de vente +20 % sur le PRU (11/11/2026) : actions détenues seulement (pas les ETF ni les fonds, valeurs au long cours)
+const p20=l=>(Q(l)>0&&n(l.pru)>0&&typeOf(l)==="Actions"&&!isProt(l))?Math.round(l.pru*1.2*100)/100:null;
 function bar(l){
   const c=n(l.cours); if(c==null) return "";
   const a=n(l.achat?.prixDerive)??n(l.achat?.prix), o=n(l.vente?.objectifDerive)??n(l.vente?.objectif), s=n(l.vente?.stop), p=n(l.pru);
