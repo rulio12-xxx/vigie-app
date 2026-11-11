@@ -322,7 +322,7 @@ function fitLines(){const W=document.querySelector("header")?.getBoundingClientR
   document.querySelectorAll(".fit1").forEach(e=>{e.style.fontSize="";const r=document.createRange();r.selectNodeContents(e);const w=r.getBoundingClientRect().width;if(w>W){const f=parseFloat(getComputedStyle(e).fontSize);e.style.fontSize=Math.floor(f*W/w*10)/10+"px";}});}
 addEventListener("resize",()=>fitLines());
 const typeOf=l=>l.type||((l.vl||l.env==="PEE"||l.env==="Assurance vie")?"Fonds":(l.fonds||String(l.higgons?.grille||"").startsWith("Fonds"))?"ETF":(l.higgons||l.analyse?.annees)?"Actions":"ETF");  // fonds/ETF notés selon la grille fonds : ETF (10/11/2026, REMX classé à tort en Actions)
-let calib=null, perfJ=null, coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterLy=null, filterOr=false, filterType=null /* par défaut : tous les types (09/11/2026) */, db=null, coll=null, editing=null;
+let filterPe=false, calib=null, perfJ=null, coh=null, especes=null, mens=null, txs=null, txEnv="", spec=null, specOpen=false, jour=null, lines=[], filterEnv=null, filterSig=null, filterDiv=null, filterBx=false, filterSv=false, filterMine=false, filterStar=null, filterLy=null, filterOr=false, filterType=null /* par défaut : tous les types (09/11/2026) */, db=null, coll=null, editing=null;
 
 const $=s=>document.querySelector(s);
 const eur1=v=>eur(v,1);
@@ -427,7 +427,8 @@ function stars(l){
   const s=n(l.higgons?.note); if(s==null||s<1) return "";
   const k=Math.min(5,Math.round(s));
   return `<span class="stars" title="${/^Fonds/.test(l.higgons?.grille||"")?"Note fonds (12 mois face à l'indice)":"Note Quality Value (Higgons)"} : ${k}/5" aria-label="Note Higgons ${k} sur 5">${"★".repeat(k)}<span class="off">${"★".repeat(5-k)}</span></span>`;
-}const isOr=l=>!!(l.quant?.facteurs?.orSensible||/gold|\bor physique/i.test(l.nom||"")); // filtre « Or » (08/11/2026) : sensibles à l'or + l'or lui-même
+}const isPe=l=>!!(l.quant?.facteurs?.petroleSensible||/\b(brent|wti|oil|pétrole)\b/i.test(l.nom||"")); // filtre « Pétrole » (11/11/2026)
+const isOr=l=>!!(l.quant?.facteurs?.orSensible||/gold|\bor physique/i.test(l.nom||"")); // filtre « Or » (08/11/2026) : sensibles à l'or + l'or lui-même
 function sortieTxt(l){ // valeur de sortie Vigie V, en observation (10/11/2026) : BPA moyen 3 ans × (1 + g) × PER de sortie, comptes publiés seulement
   const x=l.sortieV;if(!x)return "";
   if(x.mode==="ascenseur"&&n(x.v)){const c=n(l.cours),e=c?(x.v/c-1):null,f=v=>String(v).replace(".",",");return `<div class="hq" title="Valeur cyclique (${esc(l.industrie||l.secteur||"")}) : « ascenseur » sur les clôtures ${esc(x.periode)}. Étage bas = 20e centile (zone d'achat), étage haut = 80e centile (zone de vente). Observation : n'agit sur aucun signal.">🛗 Cyclique · étage bas <b>${eur(x.etageBas)}</b> · étage haut (sortie V) <b>${eur(x.etageHaut)}</b>${e!=null?` · ${e>=0?"+":""}${f((e*100).toFixed(1))} %`:""}</div>`;}
@@ -714,7 +715,7 @@ function render(){
   const bxN=l=>n(l.baisse?.niveau)||0;
   const starN=l=>{const v=n(l.higgons?.note);return v==null?null:Math.round(v);};
   const isBuy=e=>(e?.rules||[]).some(r=>r.k==="buy"), mine=({l})=>Q(l)>0;
-  const inScope=({l,e})=>(!filterMine||(filterMine==="oui")===mine({l,e}))&&(!filterSv||isSv(l))&&(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0)&&(!filterStar||starN(l)===filterStar)&&(!filterLy||(filterLy==="peg"?l.lynch?.etoilePeg:l.lynch?.etoileDividende))&&(!filterOr||isOr(l));
+  const inScope=({l,e})=>(!filterMine||(filterMine==="oui")===mine({l,e}))&&(!filterSv||isSv(l))&&(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0)&&(!filterStar||starN(l)===filterStar)&&(!filterLy||(filterLy==="peg"?l.lynch?.etoilePeg:l.lynch?.etoileDividende))&&(!filterOr||isOr(l))&&(!filterPe||isPe(l));
   // signaux (dans le périmètre type + enveloppe)
   const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return h>0&&c!=null&&c<=h;};
   const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,hg:0};
@@ -724,7 +725,7 @@ function render(){
   // types d'actifs + bouton tout réafficher
   $("#types").innerHTML=TYPES.filter(t=>lines.some(l=>typeOf(l)===t)).map(t=>`<button class="chip" type="button" data-type="${t}" aria-pressed="${filterType===t}">${t} <span class="num">${lines.filter(l=>typeOf(l)===t).length}</span></button>`).join("")+
     `<button class="chip" type="button" data-type="" aria-pressed="${!filterType}">Tous types <span class="num">${lines.length}</span></button>`+
-    ((filterType||filterEnv||filterSig||filterDiv||filterBx||filterSv||filterMine||filterStar||filterLy||filterOr)?`<button class="chip reset" type="button" id="reset">↺ Tout réafficher</button>`:"");
+    ((filterType||filterEnv||filterSig||filterDiv||filterBx||filterSv||filterMine||filterStar||filterLy||filterOr||filterPe)?`<button class="chip reset" type="button" id="reset">↺ Tout réafficher</button>`:"");
   // enveloppes
   const val=l=>(Q(l)&&n(l.cours))?Q(l)*l.cours:0, lat=l=>(Q(l)&&n(l.cours)&&n(l.pru))?Q(l)*(l.cours-l.pru):0;
   const used=ENVS.filter(e=>lines.some(l=>l.env===e));
@@ -742,7 +743,8 @@ function render(){
     [5,4].map(k=>`<button class="chip" type="button" data-star="${k}" aria-pressed="${filterStar===k}" title="Note Higgons ${k}/5"${k===5?' style="margin-left:8px"':''}><span style="color:#b8860b">${"★".repeat(k)}</span> ${k}★ <span class="num">${base.filter(l=>starN(l)===k).length}</span></button>`).join("")+
     `<button class="chip" type="button" data-ly="peg" aria-pressed="${filterLy==="peg"}" title="Étoile bleue de Lynch : PEG < 1" style="margin-left:8px"><span style="color:var(--lyn)">★</span> Lynch PEG <span class="num">${base.filter(l=>l.lynch?.etoilePeg).length}</span></button>`+
     `<button class="chip" type="button" data-ly="div" aria-pressed="${filterLy==="div"}" title="Étoile violette de Lynch : (croissance + rendement) ÷ PER ≥ 2"><span class="lyn-t div">★</span> Lynch dividende <span class="num">${base.filter(l=>l.lynch?.etoileDividende).length}</span></button>`+
-    `<button class="chip" type="button" id="for" aria-pressed="${filterOr}" title="Lignes sensibles à l'or (régression 12 mois)"><svg viewBox="0 0 20 12" width="16" height="10" aria-hidden="true" style="vertical-align:-1px;margin-right:3px"><path d="M4 1h12l3 10H1z" fill="#d4a017" stroke="#9a7209" stroke-width="1"/><path d="M5.2 2.5h9.6" stroke="#f6dc7a" stroke-width="1.2"/></svg> Lié à l'or <span class="num">${base.filter(isOr).length}</span></button>`;
+    `<button class="chip" type="button" id="for" aria-pressed="${filterOr}" title="Lignes sensibles à l'or (régression 12 mois)"><svg viewBox="0 0 20 12" width="16" height="10" aria-hidden="true" style="vertical-align:-1px;margin-right:3px"><path d="M4 1h12l3 10H1z" fill="#d4a017" stroke="#9a7209" stroke-width="1"/><path d="M5.2 2.5h9.6" stroke="#f6dc7a" stroke-width="1.2"/></svg> Lié or <span class="num">${base.filter(isOr).length}</span></button>`+
+    `<button class="chip" type="button" id="fpe" aria-pressed="${filterPe}" title="Lignes sensibles au pétrole (régression 12 mois) et pétrolières">🛢 Pétrole <span class="num">${base.filter(isPe).length}</span></button>`;
   const T=lines.reduce((s,l)=>s+val(l),0), L=lines.reduce((s,l)=>s+lat(l),0);
   $("#total").textContent=T?eur(T+(Object.keys(especes||{}).filter(k=>ENVS.includes(k)).reduce((s,k)=>s+(n(especes[k])||0),0)),0):"—";
   // synthèse par enveloppe : valeur (toutes les lignes avec quantité) et plus-value
@@ -940,13 +942,14 @@ async function removeLine(id){
 /* ---- interactions ---- */
 document.addEventListener("click",e=>{
   const s=e.target.closest(".sig"); if(s){filterSig=filterSig===s.dataset.k?null:s.dataset.k;render();return;}
-  if(e.target.closest("#reset")){filterType=null;filterEnv=null;filterSig=null;filterDiv=null;filterBx=false;filterSv=false;filterMine=false;filterStar=null;filterLy=null;filterOr=false;render();return;}
+  if(e.target.closest("#reset")){filterType=null;filterEnv=null;filterSig=null;filterDiv=null;filterBx=false;filterSv=false;filterMine=false;filterStar=null;filterLy=null;filterOr=false;filterPe=false;render();return;}
   if(e.target.closest("#fbx")){filterBx=!filterBx;render();return;}
   if(e.target.closest("#fsv")){filterSv=!filterSv;render();return;}
   if(e.target.closest("#fbuy")){filterMine=filterMine==="non"?false:"non";render();return;}
   if(e.target.closest("#fmine")){filterMine=filterMine==="oui"?false:"oui";render();return;}
   const ly=e.target.closest("[data-ly]"); if(ly){const k=ly.dataset.ly;filterLy=filterLy===k?null:k;render();return;}
   if(e.target.closest("#for")){filterOr=!filterOr;render();return;}
+  if(e.target.closest("#fpe")){filterPe=!filterPe;render();return;}
   const st=e.target.closest("[data-star]"); if(st){const k=+st.dataset.star;filterStar=filterStar===k?null:k;render();return;}
   const dv=e.target.closest("[data-div]"); if(dv){filterDiv=filterDiv===dv.dataset.div?null:dv.dataset.div;render();return;}
   const c=e.target.closest(".chip"); if(c){if("type" in c.dataset)filterType=c.dataset.type||null;else filterEnv=c.dataset.env||null;render();return;}
