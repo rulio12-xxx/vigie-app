@@ -765,11 +765,11 @@ function render(){
   const T=lines.reduce((s,l)=>s+val(l),0), L=lines.reduce((s,l)=>s+lat(l),0);
   $("#total").textContent=T?eur(T+(Object.keys(especes||{}).filter(k=>ENVS.includes(k)).reduce((s,k)=>s+(n(especes[k])||0),0)),0):"—";
   // synthèse par enveloppe : valeur (toutes les lignes avec quantité) et plus-value
-  // PEE : sur 12 mois glissants (cours actuel − cours d'il y a un an, champ « an ») ; à défaut de cours à 1 an, depuis le PRU.
+  // PEE : sur 12 mois glissants seulement (cours actuel − cours d'il y a un an, champ « an ») ; jamais depuis le PRU, qui inclut la décote / bonification (12/11/2026).
   // Autres enveloppes : plus-value latente depuis le PRU.
   const base12=l=>{const a=n(l.an?.cours);return l.env==="PEE"&&a>0?a:null;};
-  const agg=ls=>{let v=0,pv=0,cost=0,sans=0,pru=0;ls.forEach(l=>{const q=Q(l),c=n(l.cours),a=base12(l),p=n(l.pru);if(!(q>0)||c==null)return;v+=q*c;const b=a??p;if(b!=null){pv+=q*(c-b);cost+=q*b;if(a==null&&l.env==="PEE")pru++;}else sans++;});return {v,pv,cost,sans,pru};};
-  const nc=(e,a)=>[e==="PEE"?"sur 12 mois glissants":"",a.pru?`${a.pru} ligne${a.pru>1?"s":""} depuis le PRU (pas encore de cours à 1 an)`:"",a.sans?`${a.sans} ligne${a.sans>1?"s":""} sans PRU`:""].filter(Boolean).join(" · ");
+  const agg=ls=>{let v=0,pv=0,cost=0,sans=0,pru=0;ls.forEach(l=>{const q=Q(l),c=n(l.cours),a=base12(l),p=n(l.pru);if(!(q>0)||c==null)return;v+=q*c;const b=l.env==="PEE"?a:(a??p);if(b!=null){pv+=q*(c-b);cost+=q*b;}else if(l.env==="PEE")pru++;else sans++;});return {v,pv,cost,sans,pru};};
+  const nc=(e,a)=>[e==="PEE"?"sur 12 mois glissants":"",a.pru?`${a.pru} ligne${a.pru>1?"s":""} sans cours à 1 an (non comptée)`:"",a.sans?`${a.sans} ligne${a.sans>1?"s":""} sans PRU`:""].filter(Boolean).join(" · ");
   const rowS=(lab,a,cls="",note="")=>`<tr class="${cls}"><td>${lab}</td><td>${eur(a.v,0)}</td><td class="${a.cost?(a.pv>=0?"pos":"neg"):""}">${a.cost?`${a.pv>=0?"+":"−"}${eur(Math.abs(a.pv),0)}`:"—"}</td><td class="${a.cost?(a.pv>=0?"pos":"neg"):""}">${a.cost?pct(a.pv/a.cost):"—"}</td><td class="nc">${note}</td></tr>`;
   const envRows=used.map(e=>({e,a:agg(lines.filter(l=>l.env===e))})).filter(x=>x.a.v>0);
   const cash=e=>n(especes?.[e])||0, cashT=Object.keys(especes||{}).filter(k=>ENVS.includes(k)).reduce((s,k)=>s+cash(k),0);
