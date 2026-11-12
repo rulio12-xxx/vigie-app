@@ -839,7 +839,9 @@ function render(){
   if(!shown.length){$("#list").innerHTML=`<div class="empty">Rien dans ce filtre.</div>`;return;}
   $("#list").innerHTML=shown.map(({l,e})=>{
     const c=n(l.cours), stale=l.coursDate&&days(l.coursDate,TODAY)>STALE_DAYS;
-    const pl=(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
+    // PEE (12/11/2026) : le pourcentage affiché est l'évolution sur 12 mois glissants, pas le gain depuis le PRU (qui inclut la bonification)
+    const an12=l.env==="PEE"&&n(l.an?.cours)>0&&c!=null?c/l.an.cours-1:null;
+    const pl=l.env==="PEE"?an12:(c!=null&&n(l.pru))?(c-l.pru)/l.pru:null;
     const drop=isDrop(l), fall=isFalling(l);
     if(isSw(l)) return rowHtml(l,e,c,stale,pl,drop,fall).replace('<button class="row"','<button class="row swing" title="Opération pic / rachat en cours"');
     return rowHtml(l,e,c,stale,pl,drop,fall);}).join("");
@@ -849,7 +851,7 @@ function rowHtml(l,e,c,stale,pl,drop,fall){
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
       <div style="min-width:0"><div class="name"><span class="nmw">${esc(l.nom)}&nbsp;<span class="env">${esc(l.env)}</span></span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${lynchStars(l)}${l.code&&String(l.code).length<=8?`<span class="mnemo" title="Mnémonique">${esc(l.code)}</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
-        <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}">${pct(pl)}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${g12(l)}</div>
+        <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}" title="${l.env==="PEE"?`Sur 12 mois glissants (cours du ${fdate(l.an.date)} : ${eur(l.an.cours)})`:"Depuis le PRU"}">${pct(pl)}${l.env==="PEE"?" 12 m":""}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}</div>
       ${(()=>{const t=qnt(l)+sur(l)+fct(l)+dirig(l)+marq(l)+medal(l)+conc(l)+spk(l)+bx(l)+dcr(l)+drv(l)+rvb(l)+clm(l);return t?`<div class="tags">${t}</div>`:"";})()}
       ${(()=>{const p=[];if(l.code&&String(l.code).length>8)p.push(esc(l.code));if(n(l.qte))p.push(`${l.qte.toLocaleString("fr-FR")} part${l.qte>1?"s":""}`);if(n(l.pru))p.push(`<span class="nw">PRU ${eur(l.pru)}${n(l.qte)>0?'&nbsp;<span class="okin" title="Ligne achetée">👍</span>':""}</span>`);const v=l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:"";return p.length||v?`<div class="code cl">${p.join(" · ")}${v}</div>`:"";})()}
       ${(()=>{const h=crit(l)+lynchTxt(l)+sortieTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
