@@ -100,6 +100,7 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .price .c{font:500 15px/1.2 var(--f-num);display:inline-flex;align-items:center;gap:6px}
 .live{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;color:var(--accent);background:var(--accent-soft);text-decoration:none;flex:none}
 .live:hover{filter:brightness(.92)}.live svg{width:18px;height:18px}
+.row .live{position:absolute;top:0;right:0;width:30px;height:30px;border-radius:0 15px 0 10px}.row .live svg{width:16px;height:16px}.row .price{padding-right:22px}  /* 13/11/2026 : lien dans le coin haut droit de la carte */
 .price .d{font-size:11px;color:var(--muted)}
 .price .d.stale{color:var(--warn)}
 .price .d .old{font:600 9px var(--f-body);letter-spacing:.04em;text-transform:uppercase;color:var(--warn);background:var(--warn-soft);padding:0 4px;border-radius:3px}
@@ -381,7 +382,7 @@ function evaluate(l){
     let r;
     // ligne non détenue : la cible de revente est une information, jamais un signal de vente
     if(!(Q(l)>0)&&l.horizon?.type==="court"&&n(l.achat?.prix)){const pa=n(l.achat.prixDerive)??n(l.achat.prix); // pari non acheté : paliers du court terme depuis le prix d'achat (08/11/2026)
-      r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`Pari une fois acheté à ${eur(pa)} : tout à <b>${eur(pa*1.2)}</b> (+20 %)${o!=null?` · cible ${eur(o)} (repère)`:""}`};}
+      r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:n(l.vente?.ordrePct)?`Une fois acheté à ${eur(pa)} : alerte à <b>${eur(pa*(1+(n(l.vente.alertePct)??0.2)))}</b>, ordre de vente à <b>${eur(pa*(1+n(l.vente.ordrePct)))}</b> (+${Math.round(n(l.vente.ordrePct)*100)} %)${o!=null?` · cible ${eur(o)} (repère)`:""}`:`Pari une fois acheté à ${eur(pa)} : tout à <b>${eur(pa*1.2)}</b> (+20 %)${o!=null?` · cible ${eur(o)} (repère)`:""}`};}
     else if(!(Q(l)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${(()=>{const pa=n(l.achat?.prixDerive)??n(l.achat?.prix);return pa?pct((o-pa)/pa)+" vs prix d'achat":pct((o-c)/c)+" vs cours";})()})`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
     else if(s!=null&&c<=s) r={cls:"p-sell",tag:"Stop atteint",k:"sell",rk:0,txt:`Cours sous le stop de <b>${eur(s)}</b> — vendre`};
     else if(o!=null&&c>=o) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
