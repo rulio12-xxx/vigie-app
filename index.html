@@ -386,7 +386,7 @@ function evaluate(l){
     else if(s!=null&&c<=s) r={cls:"p-sell",tag:"Stop atteint",k:"sell",rk:0,txt:`Cours sous le stop de <b>${eur(s)}</b> — vendre`};
     else if(o!=null&&c>=o) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
     // règle du 11/11/2026 : action détenue → « Vendre » dès +20 % sur le PRU, « Presque à vendre » à moins de NEAR_PCT ; la cible reste affichée comme repère
-    else if(p20(l)!=null&&c>=p20(l)) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`${rsi80(l)?`+15 % atteint avec RSI ${Math.round(l.quant.rsi14)} > 80`:"+20 % atteint"} : ${pct((c-l.pru)/l.pru)} vs PRU (seuil <b>${eur(p20(l))}</b>)${o!=null?` · cible ${eur(o)} (repère, encore ${pct((o-c)/c)})`:""}`};
+    else if(p20(l)!=null&&c>=p20(l)) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:n(l.vente?.ordrePct)?`+${Math.round((n(l.vente?.alertePct)??0.2)*100)} % atteint : passer l'ordre à +${Math.round(n(l.vente.ordrePct)*100)} % = <b>${eur(l.pru*(1+n(l.vente.ordrePct)))}</b>${l.taux?` (≈ ${(l.pru*(1+n(l.vente.ordrePct))*l.taux).toFixed(2).replace(".",",")} $)`:""}`:`${rsi80(l)?`+15 % atteint avec RSI ${Math.round(l.quant.rsi14)} > 80`:"+20 % atteint"} : ${pct((c-l.pru)/l.pru)} vs PRU (seuil <b>${eur(p20(l))}</b>)${o!=null?` · cible ${eur(o)} (repère, encore ${pct((o-c)/c)})`:""}`};
     else if(p20(l)!=null&&(p20(l)-c)/p20(l)<NEAR_PCT) r={cls:"p-warn",tag:"Presque à vendre",k:"soonsell",rk:2,txt:`${rsi80(l)?"+15 % (RSI > 80)":"+20 %"} à <b>${eur(p20(l))}</b> · encore ${pct((p20(l)-c)/c)}${o!=null?` · cible ${eur(o)} (repère)`:""}`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Cible ${o!=null?`<b>${eur(o)}</b> `:""}non atteinte au ${fdate(v.avant)} — vendre ou prolonger ?`};
     else{
@@ -403,7 +403,8 @@ function evaluate(l){
   if(Q(l)>0&&pr&&hz==="court"&&isAct(l)){
     const g=c/pr-1, ech=l.horizon.date?days(TODAY,new Date(Date.parse(l.horizon.date)+182*864e5).toISOString().slice(0,10)):null;
     const oc=n(v.objectifDerive)??n(v.objectif);  // règle du 11/11/2026 : pari = tout vendre à +20 % (plus de moitié / reste à +30 %)
-    const base=`Court terme : tout à <b>${eur(pr*1.2)}</b> (+20 %), ou à <b>${eur(pr*1.15)}</b> (+15 %) si RSI > 80${oc!=null?` · cible ${eur(oc)} (repère)`:""} · après 6 mois, tout vendre dès <b>${eur(pr*1.08)}</b> (+8 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
+    const op=n(v.ordrePct), ap=n(v.alertePct)??0.2;
+    const base=op?`Plan : alerte à <b>${eur(pr*(1+ap))}</b> (+${Math.round(ap*100)} %), puis ordre de vente à <b>${eur(pr*(1+op))}</b> (+${Math.round(op*100)} %${l.taux?`, ≈ ${(pr*(1+op)*l.taux).toFixed(2).replace(".",",")} $`:""})${oc!=null?` · cible ${eur(oc)} (repère)`:""}`:`Court terme : tout à <b>${eur(pr*1.2)}</b> (+20 %), ou à <b>${eur(pr*1.15)}</b> (+15 %) si RSI > 80${oc!=null?` · cible ${eur(oc)} (repère)`:""} · après 6 mois, tout vendre dès <b>${eur(pr*1.08)}</b> (+8 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
     let r;
     if(g>=0.15&&rsi80(l)) r={cls:"p-sell",tag:"Vendre (+15 %)",k:"sell",rk:0,txt:base+` · RSI ${Math.round(l.quant.rsi14)} > 80 : sortie complète`};
     else if(g>=0.20) r={cls:"p-sell",tag:"Vendre (+20 %)",k:"sell",rk:0,txt:base};
@@ -668,7 +669,7 @@ const stripe={0:"var(--buy)",1:"var(--gone)",2:"var(--warn)",3:"transparent",5:"
 /* ---- barre de position : stop · seuil d'achat · cours · objectif ---- */
 // seuil de vente +20 % sur le PRU (11/11/2026) : actions détenues seulement (pas les ETF ni les fonds, valeurs au long cours)
 // 11/11/2026 : seuil abaissé à +15 % quand le RSI 14 dépasse 80 (surachat marqué)
-const rsi80=l=>n(l.quant?.rsi14)>80, kV=l=>rsi80(l)?1.15:1.2;
+const rsi80=l=>n(l.quant?.rsi14)>80&&!n(l.vente?.ordrePct), kV=l=>n(l.vente?.ordrePct)?1+(n(l.vente?.alertePct)??0.2):rsi80(l)?1.15:1.2;  // plan propre (13/11/2026, Nvidia) : alerte +20 %, ordre à +25 %
 const p20=l=>(Q(l)>0&&n(l.pru)>0&&typeOf(l)==="Actions"&&!isProt(l))?Math.round(l.pru*kV(l)*100)/100:null;
 function bar(l){
   const c=n(l.cours); if(c==null) return "";
