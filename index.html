@@ -676,22 +676,22 @@ function bar(l){
   const m10=violet(l), prot=isProt(l), vlab=prot?"PRU0%":"−10%", hg=n(l.higgons?.seuil)>0?n(l.higgons.seuil):null;
   // repères Lynch (08/11/2026) : L+ = juste prix (PEG 1), L++ = bon marché (PEG 0,5), affichés s'ils restent entre 0,3 et 3 × le cours
   const inR=v=>v!=null&&v>0.3*c&&v<3*c?v:null, l1=inR(n(l.lynch?.justePrix)), l2=inR(n(l.lynch?.bonMarche));
-  const held=p!=null&&n(l.qte)>0&&!prot, p30=held?p*1.3:null;  // règle graduée (11/11/2026) : PRU +10, +20, +30 %
-  const pts=[c,a,o,p,m10,hg,l1,l2,p30].filter(x=>x!=null); if(pts.length<2) return "";
+  const held=p!=null&&n(l.qte)>0&&!prot, p20m=held?p*1.2:null;  // règle graduée (11/11/2026) : PRU +10, +20, +30 % ; repère chiffré à +20 % = seuil de vente (13/11/2026)
+  const pts=[c,a,o,p,m10,hg,l1,l2,p20m].filter(x=>x!=null); if(pts.length<2) return "";
   const lo=Math.min(...pts)*0.96, hi=Math.max(...pts)*1.04, pos=v=>(v-lo)/(hi-lo)*100, x=v=>pos(v).toFixed(2)+"%";
   const short=v=>v.toLocaleString("fr-FR",{maximumFractionDigits:v<10?2:v<1000?1:0});
   let h='<div class="track"></div>';
   if(a!=null) h+=`<div class="zone" style="left:0;width:${x(a)};background:var(--buy-soft)"></div>`;
   const thumb=left=>`<div class="ok" style="left:${left}" title="Ligne achetée"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg></div>`;
   if(o!=null) h+=`<div class="zone" style="left:${x(o)};right:0;background:var(--sell-soft)"></div>`;
-  if(held) [1.1,1.2,1.3].forEach(k=>{h+=`<div class="grad" style="left:${x(p*k)};${k===1.3?"height:8px;opacity:1":""}" title="PRU +${Math.round((k-1)*100)} %"></div>`;});
+  if(held) [1.1,1.2,1.3].forEach(k=>{h+=`<div class="grad" style="left:${x(p*k)};${k===1.2?"height:8px;opacity:1":""}" title="PRU +${Math.round((k-1)*100)} %"></div>`;});
   // repères : un niveau par étiquette, décalés quand deux repères sont trop proches
-  const marks=[["achat",a,"var(--buy)"],...(prot?[]:[["PRU",p,"var(--muted)"]]),[vlab,m10,"var(--drop)"],["cible",o,"var(--sell)"],["H",hg,"var(--hig)"],["L+",l1,"var(--lyn)"],["L++",l2,"var(--lyn)"],["+30%",p30,"var(--muted)"]].filter(m=>m[1]!=null).sort((m,k)=>m[1]-k[1]);
+  const marks=[["achat",a,"var(--buy)"],...(prot?[]:[["PRU",p,"var(--muted)"]]),[vlab,m10,"var(--drop)"],["cible",o,"var(--sell)"],["H",hg,"var(--hig)"],["L+",l1,"var(--lyn)"],["L++",l2,"var(--lyn)"],["+20%",p20m,"var(--muted)"]].filter(m=>m[1]!=null).sort((m,k)=>m[1]-k[1]);
   // étiquettes : passage sur une 2e ligne quand deux libellés se chevaucheraient (largeur estimée, barre ≈ 360 px)
   let lastX=-99,lastW=0,row=0,two=false;
   marks.forEach(([lab,v,col])=>{
     const px=pos(v);
-    const dash=(lab==="PRU"||lab===vlab)?";background:none;border-left:2px dashed "+col:(lab==="H"||lab==="L+"||lab==="L++"||lab==="+30%")?";background:none;border-left:2px dotted "+col:"";
+    const dash=(lab==="PRU"||lab===vlab)?";background:none;border-left:2px dashed "+col:(lab==="H"||lab==="L+"||lab==="L++"||lab==="+20%")?";background:none;border-left:2px dotted "+col:"";
     const ref=p??c, gain=lab==="objectif"&&ref?` · ${pct((v-ref)/ref)}${p==null?" vs cours":""}`:"", m=gain?(p==null?100:72):46;
     const txt=`${lab} ${lab==="achat"||lab==="H"||lab==="L+"||lab==="L++"?v.toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1}):short(v)}${gain}`, w=txt.length*6.2, cx=Math.min(Math.max(px*3.4,m),340-m);
     row=((cx-lastX)<(w+lastW)/2+8)?1-row:0; lastX=cx; lastW=w; if(row) two=true;
