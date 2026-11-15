@@ -313,7 +313,7 @@ fieldset{border-radius:16px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script>
 const ENVS=["PEA","PEA-PME","Assurance vie","PER","PEE","CTO"];
-const SOON_DAYS=15, NEAR_PCT=0.03, NEAR_BUY=0.03, STALE_DAYS=7; // proche de l'achat et de la vente : < 3 % (07/11/2026)
+const SOON_DAYS=15, NEAR_PCT=0.02, NEAR_BUY=0.03, STALE_DAYS=7; // proche de l'achat < 3 % (07/11/2026), de la vente < 2 % (15/11/2026)
 const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en dessous)
 const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
 const TYPES=["Actions","ETF","Fonds"];
