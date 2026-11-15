@@ -787,7 +787,7 @@ function render(){
     return `<tr class="tot"><td>${esc(e)} · gain réel</td><td>${eur(tot,0)}</td><td class="${g>=0?"pos":"neg"}">${g>=0?"+":"−"}${eur(Math.abs(g),0)}</td><td class="${g>=0?"pos":"neg"}">${pct(g/vs)}</td><td class="nc">titres + espèces, comparés aux ${eur(vs,0)} versés</td></tr>`
       +rowS(`${esc(e)} · titres`,x.a,"",`investies · ${info}`);};
   const totA=(()=>{const a=agg(lines);return {...a,v:a.v+cashT};})();
-  $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowP(x)??(rowS(esc(x.e),x.a,"",nc(x.e,x.a))+rowC(x.e)+rowV(x.e)+rowH(x.e))).join("")}${rowS("Total",totA,"tot",(cashT?`espèces incluses (${eur(cashT,0)}) · `:"")+(envRows.some(x=>x.e==="PEE")?"PEE sur 12 mois, le reste depuis le PRU":""))}</tbody></table>`:"";
+  $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowP(x)??(rowS(esc(x.e),x.a,"",nc(x.e,x.a))+rowC(x.e)+rowV(x.e)+rowH(x.e))).join("")}${rowS("Total",totA,"tot","")  /* 15/11/2026 : mention « espèces incluses · PEE sur 12 mois, le reste depuis le PRU » retirée (détail au survol de « Plus-value ») */}</tbody></table>`:"";
   const D=lines.filter(l=>!filterEnv||l.env===filterEnv).reduce((s,l)=>s+divYear(l),0);
   // 05/11/2026 : libellés clairs, dividendes sur leur propre ligne, courbe du gain réel du PEA depuis le début
   const parEnv={};lines.forEach(l=>{const x=lat(l);if(x)parEnv[l.env]=(parEnv[l.env]||0)+x;});
