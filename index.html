@@ -100,6 +100,7 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .price .c{font:500 15px/1.2 var(--f-num);display:inline-flex;align-items:center;gap:6px}
 .live{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;color:var(--accent);background:var(--accent-soft);text-decoration:none;flex:none}
 .live:hover{filter:brightness(.92)}.live svg{width:18px;height:18px}
+.row.maj{animation:maj 2.2s ease-out}@keyframes maj{0%{box-shadow:0 0 0 2px var(--buy)}100%{box-shadow:0 0 0 0 transparent}}  /* 16/11/2026 : carte dont le cours vient d'être mis à jour */
 .row .live{position:absolute;top:0;right:0;width:30px;height:30px;border-radius:0 15px 0 10px}.row .live svg{width:16px;height:16px}.row .price{padding-right:22px}  /* 13/11/2026 : lien dans le coin haut droit de la carte */
 .price .d{font-size:11px;color:var(--muted)}.row .price .d{margin-right:-32px}  /* 15/11/2026 : gain · date collés à droite, sous le lien */
 .price .d.stale{color:var(--warn)}

@@ -150,23 +150,28 @@
           const cj = await r.json(); const L = cj.lignes || {}, d = data?.lignes || {};
           const cle = `${cj.releve}#${cj.partiel || 0}`;
           if (!cj.releve || cj.releve < releve0 || cle === vuCle) return;
-          let k = 0;
+          let k = 0; const majIds = []; let der = null;
           for (const [id, q] of Object.entries(L)) {
             const l = d[id]; if (!l || q.cours == null || l.code === "FCPE" || l.vl || l.env === "PEE" || l.suivi?.facteur || (q.devise && q.devise !== "EUR")) continue;
-            if (l.cours !== q.cours || l.coursHeure !== q.heure) { l.cours = q.cours; l.coursDate = q.date; l.coursHeure = q.heure; l.tempsReel = false; k++; }
+            if (l.cours !== q.cours || l.coursHeure !== q.heure) { l.cours = q.cours; l.coursDate = q.date; l.coursHeure = q.heure; l.tempsReel = false; k++; majIds.push(id); der = l; }
           }
           vuCle = cle;
-          if (k) { nbMaj += k; prevenir(); etat(`cours en direct : ${nbMaj} lignes mises à jour${cj.partiel ? " (relevé en cours)" : ""} · seuils en cours de calcul`); }
+          if (k) {
+            nbMaj += k; prevenir();
+            etat(`cours en direct : ${nbMaj} lignes mises à jour${cj.partiel ? " (relevé en cours)" : ""}${der ? ` · ${der.nom} ${String(der.cours).replace(".", ",")} €` : ""} · seuils en cours de calcul`);
+            // 16/11/2026 : les cartes mises à jour s'illuminent brièvement (détenues d'abord, puis les plus proches du prix d'achat)
+            setTimeout(() => { for (const id of majIds) { const el = document.querySelector(`.row[data-id="${CSS.escape(id)}"]`); if (el) { el.classList.remove("maj"); void el.offsetWidth; el.classList.add("maj"); } } }, 400);
+          }
         } catch (_) {}
       };
-      for (let i = 0; i < 80; i++) {           // jusqu'à 6 min 40, toutes les 5 s
-        await new Promise(ok => setTimeout(ok, 5000));
+      for (let i = 0; i < 134; i++) {          // jusqu'à 6 min 40, toutes les 3 s (16/11/2026, avant 5 s)
+        await new Promise(ok => setTimeout(ok, 3000));
         await coursDirect();
-        if (i % 2) continue;
+        if (i % 3) continue;
         const q = await fetch(`${api}/runs?event=workflow_dispatch&per_page=1`, { headers: entetes(c), cache: "no-store" });
         const run = q.ok ? (await q.json()).workflow_runs?.[0] : null;
         if (run && Date.parse(run.created_at) >= depart) {
-          if (!nbMaj) etat(`relevé : ${run.status === "completed" ? "terminé" : "en cours"} (${i * 5 + 5} s)`);
+          if (!nbMaj) etat(`relevé : ${run.status === "completed" ? "terminé" : "en cours"} (${i * 3 + 3} s)`);
           try {
             const j = await fetch(run.jobs_url, { headers: entetes(c), cache: "no-store" });
             const st = j.ok ? ((await j.json()).jobs || []).flatMap(x => x.steps || []) : [];
