@@ -595,7 +595,7 @@ function renderCarte(){
     +(pee.length?`<div class="carteT"><span>PEE</span><b>${tot(pee)}</b></div>`+bloc(pee,Math.round(W*0.42),false):"");
   box.querySelectorAll("[data-go]").forEach(el=>el.onclick=()=>{const c=document.querySelector(`.row[data-id="${CSS.escape(el.dataset.go)}"]`);if(c){c.scrollIntoView({behavior:"smooth",block:"center"});c.classList.remove("maj");void c.offsetWidth;c.classList.add("maj");}});
 }
-const l2nm=l=>l.mnemo||(String(l.nom||"").replace(/\s*\(.*?\)/g,"").replace(/ UCITS ETF.*| - .*/i,"").split(/\s+/).slice(0,3).join(" "));
+const l2nm=l=>l.mnemo||(String(l.nom||"").replace(/^Amundi\s+(PEA\s+)?/i,"").replace(/^Multipar BNP Paribas\s+/i,"").replace(/^Multimanagers Actions Internationales.*/i,"DWS Monde").replace(/\s*\(.*?\)/g,"").replace(/ UCITS ETF.*| - .*/i,"").split(/\s+/).slice(0,3).join(" "));
 function renderTx(){
   const box=$("#txBox"); if(!box) return;
   const all=(txs?.liste||[]); if(!all.length){box.hidden=true;return;} box.hidden=false;
