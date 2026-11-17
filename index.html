@@ -100,6 +100,13 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .price .c{font:500 15px/1.2 var(--f-num);display:inline-flex;align-items:center;gap:6px}
 .live{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;color:var(--accent);background:var(--accent-soft);text-decoration:none;flex:none}
 .live:hover{filter:brightness(.92)}.live svg{width:18px;height:18px}
+.carte{position:relative;width:100%;margin:6px 0 10px;border-radius:10px;overflow:hidden;background:var(--sunk)}
+.carte .tu{position:absolute;box-sizing:border-box;border:1px solid var(--surface);overflow:hidden;padding:3px 4px;font-size:10.5px;line-height:1.15;color:var(--ink);cursor:pointer}
+.carte .tu b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.carte .tu span{font-variant-numeric:tabular-nums;opacity:.85}
+.carte .ev{position:absolute;box-sizing:border-box;border:2px solid var(--surface);pointer-events:none}
+.carte .evl{position:absolute;left:4px;top:2px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);pointer-events:none}
+.carteT{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-top:8px}.carteT b{color:var(--ink)}
+.carteL{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted)}.carteL i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:3px}
 .row.maj{animation:maj 2.2s ease-out}@keyframes maj{0%{box-shadow:0 0 0 2px var(--buy)}100%{box-shadow:0 0 0 0 transparent}}  /* 16/11/2026 : carte dont le cours vient d'être mis à jour */
 .row .live{position:absolute;top:0;right:0;width:30px;height:30px;border-radius:0 15px 0 10px}.row .live svg{width:16px;height:16px}.row .price{padding-right:22px}  /* 13/11/2026 : lien dans le coin haut droit de la carte */
 .price .d{font-size:11px;color:var(--muted)}.row .price .d{margin-right:-32px}  /* 15/11/2026 : gain · date collés à droite, sous le lien */
@@ -293,6 +300,7 @@ fieldset{border-radius:16px}
   </header>
   <div class="banner" id="banner" hidden></div>
   <div class="synth" id="synth"></div>
+  <details class="synth tx" id="carteBox"><summary>Carte du portefeuille</summary><div id="carte"></div></details>
   <details class="synth tx" id="stratBox"><summary>Stratégie : poids des critères (Pareto)</summary>
     <p class="nc" style="white-space:normal;line-height:1.45">Effet maximal de chaque critère sur le prix d'achat, en part du total (125 points, mis à jour le 09/11/2026). Higgons : valeur H (PER 12 pour une 5★ contre 8 pour une 0★, environ 33 points) et décote sous le cours (0 % à −30 %, 30 points). Qualité Higgons et protection 😈 : 66,4 % du poids ; le risque de krach, les étoiles de Lynch et les marqueurs des fonds réputés (🐻 🏦 📉 ✂️ 👔 🪤 🔁) ajustent le prix de quelques points ; leur effet réel est mesuré chaque mois par le recalibrage. Les prix fixés à la main ne sont pas modulés. Détail : SPECIFICATIONS.md.</p>
     <table><thead><tr><th class="l">#</th><th class="l">Critère</th><th>Effet</th><th>Poids</th><th>Cumul</th><th class="l"></th></tr></thead><tbody><tr><td class="l">1</td><td class="l"><span title="PER ≤ 12, ROE > 10 %, bénéfices réguliers, dette ≤ 50 %, BPA en hausse : valeur H et décote">Higgons (5 critères)</span></td><td>63 pts</td><td>50,4 %</td><td>50,4 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:100%"></div></td></tr><tr><td class="l">2</td><td class="l"><span title="révision des bénéfices, dette, signaux négatifs : −10 % par motif">😈 Dérive financière</span></td><td>20 pts</td><td>16,0 %</td><td>66,4 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:32%"></div></td></tr><tr><td class="l">3</td><td class="l"><span title="−3 %, −6 % ou −10 % sur achat et cible">Risque de krach (4-10/10)</span></td><td>10 pts</td><td>8,0 %</td><td>74,4 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:16%"></div></td></tr><tr><td class="l">4</td><td class="l"><span title="PEG < 1 et (croissance + rendement) ÷ PER ≥ 2 : +2 % par étoile">★ Étoiles de Lynch</span></td><td>4 pts</td><td>3,2 %</td><td>77,6 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:6%"></div></td></tr><tr><td class="l">5</td><td class="l"><span title="≥ 0,5 % du capital −2 % ; ≥ 1,5 % −4 %">🐻 Ventes à découvert (AMF)</span></td><td>4 pts</td><td>3,2 %</td><td>80,8 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:6%"></div></td></tr><tr><td class="l">6</td><td class="l"><span title="+3 %">Survente 4-5★ (RSI < 35)</span></td><td>3 pts</td><td>2,4 %</td><td>83,2 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:5%"></div></td></tr><tr><td class="l">7</td><td class="l"><span title="séance ≤ −8 % vs marché : −3 %">📉 Réaction négative aux résultats</span></td><td>3 pts</td><td>2,4 %</td><td>85,6 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:5%"></div></td></tr><tr><td class="l">8</td><td class="l"><span title="coupé −3 % ; en hausse +1 %">✂️ / 💶 Dividende</span></td><td>3 pts</td><td>2,4 %</td><td>88,0 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:5%"></div></td></tr><tr><td class="l">9</td><td class="l"><span title="+2 %">👔 Achats de dirigeants</span></td><td>2 pts</td><td>1,6 %</td><td>89,6 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:3%"></div></td></tr><tr><td class="l">10</td><td class="l"><span title="+2 %">🏦 Entrée d'un fonds réputé</span></td><td>2 pts</td><td>1,6 %</td><td>91,2 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:3%"></div></td></tr><tr><td class="l">11</td><td class="l"><span title="piège de valeur −2 % ; dynamique positive +1 %">🪤 / 🚀 Dynamique 12 mois</span></td><td>2 pts</td><td>1,6 %</td><td>92,8 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:3%"></div></td></tr><tr><td class="l">12</td><td class="l"><span title="−2 %">Forte volatilité</span></td><td>2 pts</td><td>1,6 %</td><td>94,4 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:3%"></div></td></tr><tr><td class="l">13</td><td class="l"><span title="+2 %">✨ Révision de BPA</span></td><td>2 pts</td><td>1,6 %</td><td>96,0 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:3%"></div></td></tr><tr><td class="l">14</td><td class="l"><span title="période d'achat +2 % ; marché au plus haut −2 %">Régime de marché</span></td><td>2 pts</td><td>1,6 %</td><td>97,6 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:3%"></div></td></tr><tr><td class="l">15</td><td class="l"><span title="+1 %">🔁 Rachats d'actions</span></td><td>1 pt</td><td>0,8 %</td><td>98,4 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:2%"></div></td></tr><tr><td class="l">16</td><td class="l"><span title="+1 %">Faible volatilité</span></td><td>1 pt</td><td>0,8 %</td><td>99,2 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:2%"></div></td></tr><tr><td class="l">17</td><td class="l"><span title="±1 %">Saison (nov-avr / mai-oct)</span></td><td>1 pt</td><td>0,8 %</td><td>100,0 %</td><td class="l" style="width:35%"><div style="height:10px;border-radius:3px;background:var(--accent);width:2%"></div></td></tr></tbody></table></details>
@@ -543,6 +551,51 @@ function renderMens(){
     return `<h3>${esc(nm(k))} <span class="num">· ${fdate(m.date)} ${esc(m.heure||"")} · total ${eur(m.total,0)}</span></h3>${ob}<table><thead><tr><th class="l">Enveloppe</th><th>Valeur</th><th>Mois</th><th>Depuis le début</th></tr></thead><tbody>${rows}</tbody></table>${m.strategie?`<p class="nc" style="white-space:normal;line-height:1.45">${esc(m.strategie)}</p>`:""}`;}).join("");
 }
 /* ---- journal des transactions (document « journal/transactions », règle du 30/10/2026) ---- */
+/* ---- carte du portefeuille (17/11/2026) : mosaïque (treemap) des lignes, surface = valeur, couleur = gain depuis le PRU
+   (PEE : sur 12 mois) ; hors PEE groupé par enveloppe, PEE à part (il pèse ~90 % du total) ---- */
+function squarify(items,x,y,w,h){ // items triés décroissants {v,...} → {x,y,w,h}
+  const out=[],tot=items.reduce((s,i)=>s+i.v,0);if(!tot||w<=0||h<=0)return out;
+  let rest=items.map(i=>({...i,a:i.v/tot*w*h}));
+  while(rest.length){
+    const short=Math.min(w,h);let row=[rest[0]],best=Infinity,k=1;
+    const worst=r=>{const s=r.reduce((t,i)=>t+i.a,0),mx=Math.max(...r.map(i=>i.a)),mn=Math.min(...r.map(i=>i.a));return Math.max(short*short*mx/(s*s),s*s/(short*short*mn));};
+    best=worst(row);
+    while(k<rest.length){const t=[...row,rest[k]],q=worst(t);if(q>best)break;row=t;best=q;k++;}
+    const s=row.reduce((t,i)=>t+i.a,0);
+    if(w>=h){const cw=s/h;let cy=y;for(const i of row){const ch=i.a/cw;out.push({...i,x,y:cy,w:cw,h:ch});cy+=ch;}x+=cw;w-=cw;}
+    else{const ch=s/w;let cx=x;for(const i of row){const cw=i.a/ch;out.push({...i,x:cx,y,w:cw,h:ch});cx+=cw;}y+=ch;h-=ch;}
+    rest=rest.slice(row.length);
+  }
+  return out;
+}
+function renderCarte(){
+  const box=$("#carte");if(!box)return;
+  const db=$("#carteBox");if(db&&!db.dataset.lie){db.dataset.lie=1;db.addEventListener("toggle",()=>{if(db.open)renderCarte();});addEventListener("resize",()=>{if(db.open)renderCarte();});}
+  const W=Math.max(240,(box.clientWidth||$("#synth")?.clientWidth||340));
+  const gain=l=>l.env==="PEE"?(n(l.an?.cours)>0?l.cours/l.an.cours-1:null):(n(l.pru)?l.cours/l.pru-1:null);
+  const col=g=>{if(g==null)return "var(--sunk)";const k=Math.min(1,Math.abs(g)/0.25);return `color-mix(in srgb, ${g>=0?"var(--up)":"var(--down)"} ${Math.round(18+k*62)}%, var(--surface))`;};
+  const pc=g=>g==null?"":`${g>=0?"+":"−"}${Math.abs(g*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} %`;
+  const L=lines.filter(l=>Q(l)>0&&n(l.cours)).map(l=>({l,v:Q(l)*l.cours,g:gain(l)})).filter(x=>x.v>0);
+  const tuile=(t)=>{const big=t.w>46&&t.h>26,mid=!big&&t.w>26&&t.h>14,nm=esc(l2nm(t.l)),cd=esc(t.l.mnemo||(t.l.code&&t.l.code!=="FCPE"&&!/^[A-Z]{2}\d/.test(t.l.code)?t.l.code:l2nm(t.l).slice(0,5)));
+    return `<div class="tu" data-go="${esc(t.l.id)}" style="left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px;background:${col(t.g)}" title="${esc(t.l.nom)} · ${eur(t.v,0)}${t.g!=null?" · "+pc(t.g)+(t.l.env==="PEE"?" sur 12 mois":" depuis le PRU"):""}">${big?`<b>${nm}</b><span>${eur(t.v,0)}${t.h>38&&t.g!=null?"<br>"+pc(t.g):""}</span>`:mid?`<b style="font-size:9px">${cd}</b>`:""}</div>`;};
+  const bloc=(liste,H,grouper)=>{
+    if(!liste.length)return "";
+    let html="";
+    if(grouper){const envs={};liste.forEach(x=>{(envs[x.l.env]=envs[x.l.env]||[]).push(x);});
+      const E=Object.entries(envs).map(([e,xs])=>({e,xs,v:xs.reduce((s,x)=>s+x.v,0)})).sort((a,b)=>b.v-a.v);
+      for(const r of squarify(E,0,0,W,H)){const hd=r.h>40&&r.w>60?14:0;
+        html+=squarify(r.xs.sort((a,b)=>b.v-a.v),r.x,r.y+hd,r.w,r.h-hd).map(tuile).join("")+`<div class="ev" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"></div>${hd?`<div class="evl" style="left:${r.x+4}px;top:${r.y+1}px">${esc(r.e)} · ${eur(r.v,0)}</div>`:""}`;}
+    }else html=squarify(liste.sort((a,b)=>b.v-a.v),0,0,W,H).map(tuile).join("");
+    return `<div class="carte" style="height:${H}px">${html}</div>`;
+  };
+  const hors=L.filter(x=>x.l.env!=="PEE"),pee=L.filter(x=>x.l.env==="PEE");
+  const tot=a=>eur(a.reduce((s,x)=>s+x.v,0),0);
+  box.innerHTML=`<div class="carteL"><span><i style="background:${col(0.25)}"></i>gain</span><span><i style="background:${col(-0.25)}"></i>perte</span><span>surface = valeur · teinte = gain depuis le PRU (PEE : 12 mois) · toucher une case ouvre la ligne</span></div>`
+    +(hors.length?`<div class="carteT"><span>Hors PEE</span><b>${tot(hors)}</b></div>`+bloc(hors,Math.round(W*0.9),true):"")
+    +(pee.length?`<div class="carteT"><span>PEE</span><b>${tot(pee)}</b></div>`+bloc(pee,Math.round(W*0.42),false):"");
+  box.querySelectorAll("[data-go]").forEach(el=>el.onclick=()=>{const c=document.querySelector(`.row[data-id="${CSS.escape(el.dataset.go)}"]`);if(c){c.scrollIntoView({behavior:"smooth",block:"center"});c.classList.remove("maj");void c.offsetWidth;c.classList.add("maj");}});
+}
+const l2nm=l=>l.mnemo||(String(l.nom||"").replace(/\s*\(.*?\)/g,"").replace(/ UCITS ETF.*| - .*/i,"").split(/\s+/).slice(0,3).join(" "));
 function renderTx(){
   const box=$("#txBox"); if(!box) return;
   const all=(txs?.liste||[]); if(!all.length){box.hidden=true;return;} box.hidden=false;
@@ -795,6 +848,7 @@ function render(){
       +rowS(`${esc(e)} · titres`,x.a,"",`investies · ${info}`);};
   const totA=(()=>{const a=agg(lines);return {...a,v:a.v+cashT};})();
   $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowP(x)??(rowS(esc(x.e),x.a,"",nc(x.e,x.a))+rowC(x.e)+rowV(x.e)+rowH(x.e))).join("")}${rowS("Total",totA,"tot","")  /* 15/11/2026 : mention « espèces incluses · PEE sur 12 mois, le reste depuis le PRU » retirée (détail au survol de « Plus-value ») */}</tbody></table>`:"";
+  try{renderCarte();}catch(e){console.warn("carte",e);}
   const D=lines.filter(l=>!filterEnv||l.env===filterEnv).reduce((s,l)=>s+divYear(l),0);
   // 05/11/2026 : libellés clairs, dividendes sur leur propre ligne, courbe du gain réel du PEA depuis le début
   const parEnv={};lines.forEach(l=>{const x=lat(l);if(x)parEnv[l.env]=(parEnv[l.env]||0)+x;});
