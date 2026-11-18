@@ -271,6 +271,7 @@ fieldset{border-radius:16px}
 .lyn{font-size:14px;margin-left:3px;cursor:help}.lyn.peg{color:#1A73E8}.lyn.div{color:#9334E6}
 :root[data-theme="dark"] .lyn.peg{color:#8AB4F8}:root[data-theme="dark"] .lyn.div{color:#C58AF9}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lyn.peg{color:#8AB4F8}:root:not([data-theme="light"]) .lyn.div{color:#C58AF9}}
+.vebit-ok{color:var(--up);font-weight:600}
 .lyn-t.peg{color:#1A73E8}.lyn-t.div{color:#9334E6}
 :root[data-theme="dark"] .lyn-t.peg{color:#8AB4F8}:root[data-theme="dark"] .lyn-t.div{color:#C58AF9}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lyn-t.peg{color:#8AB4F8}:root:not([data-theme="light"]) .lyn-t.div{color:#C58AF9}}
@@ -455,6 +456,14 @@ function sortieTxt(l){ // valeur de sortie Vigie V, en observation (10/11/2026) 
   if(x.mode==="ascenseur"&&n(x.v)){const c=n(l.cours),e=c?(x.v/c-1):null,f=v=>String(v).replace(".",",");return `<div class="hq" title="Valeur cyclique (${esc(l.industrie||l.secteur||"")}) : « ascenseur » sur les clôtures ${esc(x.periode)}. Étage bas = 20e centile (zone d'achat), étage haut = 80e centile (zone de vente). Observation : n'agit sur aucun signal.">🛗 Cyclique · étage bas <b>${eur(x.etageBas)}</b> · étage haut (sortie V) <b>${eur(x.etageHaut)}</b>${e!=null?` · ${e>=0?"+":""}${f((e*100).toFixed(1))} %`:""}</div>`;}
   if(!n(x.v))return x.motif?`<div class="hq"><span class="x">Sortie V : ${esc(x.motif)}</span></div>`:"";const f=v=>String(v).replace(".",","),c=n(l.cours),e=c?(x.v/c-1):null;
   return `<div class="hq" title="V = BPA moyen pondéré ${esc(x.poids||"1-2-3")} (${esc(x.annees)}) ${eur(x.bpaMoyen)} × (1 + croissance ${f((x.croissance*100).toFixed(1))} %) × PER de sortie ${f(x.perSortie)} ; PER de sortie = k ${f(x.k)} × (croissance + rendement ${f((x.rendement*100).toFixed(1))} %), borné 10-18. Comptes publiés seulement, sans estimation d'analyste. Observation : n'agit sur aucun signal ; k s'affûte avec les ventes suivies à 3 mois.">Sortie V (observation) : <b>${eur(x.v)}</b>${e!=null?` · ${e>=0?"+":""}${f((e*100).toFixed(1))} %`:""} · PER de sortie ${f(x.perSortie)}</div>`;}
+function vebitTxt(l){ // VE / EBIT (18/11/2026) : valeur d'entreprise (capitalisation + dette nette + minoritaires) ÷ résultat opérationnel 12 mois ; vert si < 7
+  const x=l.vebit; if(!x)return l.perf52?`<div class="hq">${p52Txt(l).slice(3)}</div>`:""; const f=v=>String(v).replace(".",","), m=v=>{const a=Math.abs(v);return (a>=1000?f((v/1000).toFixed(1))+" Md":f(Math.round(v))+" M")+" "+(x.devise==="EUR"?"€":esc(x.devise||""));};
+  if(!n(x.v))return `<div class="hq"><span class="x">VE/EBIT : ${esc(x.motif||"non calculé")}</span>${p52Txt(l)}</div>`;
+  const ok=x.v<7;
+  return `<div class="hq" title="VE = capitalisation ${m(x.capi)} + dette nette ${m(x.detteNette)} (+ intérêts minoritaires). EBIT = résultat opérationnel publié, ${esc(x.base)}. Repère : sous 7, l'entreprise est bon marché dette comprise. Comptes publiés (Yahoo), relevé le ${esc(x.date)}. N'entre pas dans la note Higgons."><span class="${ok&&!x.avertissement?"vebit-ok":"x"}">${ok?"✓":"✗"} VE/EBIT ${f(x.v)}${ok?" &lt; 7":""} (VE ${m(x.ve)} ÷ EBIT ${m(x.ebit)}, ${esc(x.base)})${x.avertissement?" · ⚠ "+esc(x.avertissement):""}</span>${p52Txt(l)}</div>`;}
+function p52Txt(l){ // performance 52 semaines (18/11/2026) : repère < 20 % = pas encore flambé
+  const p=l.perf52; if(!p||!n(p.v)&&p.v!==0)return ""; const ok=p.v<0.2, t=(p.v>=0?"+":"")+(p.v*100).toFixed(1).replace(".",",")+" %";
+  return ` · <span class="${ok?"vebit-ok":"x"}" title="Clôture du ${esc(p.date)} ÷ clôture du ${esc(p.depuis)} − 1. Repère : sous +20 %, le titre n'a pas encore flambé.">${ok?"✓":"✗"} 52 sem. ${t}${ok?" &lt; 20 %":""}</span>`;}
 function lynchTxt(l){ // texte des critères de Lynch, dans la couleur de l'étoile (08/11/2026)
   const y=l.lynch; if(!y)return ""; const f=v=>String(v).replace(".",",");
   if(y.croissance==null) return `<div class="hq lynt"><span class="x">Lynch : ${esc(y.motif||"non calculé")}</span></div>`;
@@ -917,7 +926,7 @@ function rowHtml(l,e,c,stale,pl,drop,fall){
         <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}" title="${l.env==="PEE"?`Sur 12 mois glissants (cours du ${fdate(l.an.date)} : ${eur(l.an.cours)})`:"Depuis le PRU"}">${pct(pl)}${l.env==="PEE"?" 12 m":""}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}</div>
       ${(()=>{const t=qnt(l)+sur(l)+fct(l)+dirig(l)+marq(l)+medal(l)+conc(l)+spk(l)+bx(l)+dcr(l)+drv(l)+rvb(l)+clm(l);return t?`<div class="tags">${t}</div>`:"";})()}
       ${(()=>{const p=[];if(l.code&&String(l.code).length>8)p.push(esc(l.code));if(n(l.qte))p.push(`${l.qte.toLocaleString("fr-FR")} part${l.qte>1?"s":""}`);if(n(l.pru))p.push(`<span class="nw">PRU ${eur(l.pru)}${n(l.qte)>0?'&nbsp;<span class="okin" title="Ligne achetée">👍</span>':""}</span>`);const v=l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:"";return p.length||v?`<div class="code cl">${p.join(" · ")}${v}</div>`:"";})()}
-      ${(()=>{const h=crit(l)+lynchTxt(l)+sortieTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
+      ${(()=>{const h=crit(l)+lynchTxt(l)+vebitTxt(l)+sortieTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${h}</div>`:"";})()}
       <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
       ${bar(l)}
     </button>`;
