@@ -328,6 +328,7 @@ fieldset{border-radius:16px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script>
 const ENVS=["PEA","PEA-PME","Assurance vie","PER","PEE","CTO"];
+const VENTE_FIXE=true; // 21/11/2026 : vente à +20 % par ordre préparé dès l'achat (plus de suivi du plus haut ; la cible n'est qu'un repère)
 const SOON_DAYS=15, NEAR_PCT=0.02, NEAR_BUY=0.02, STALE_DAYS=7; // proche de l'achat < 2 % (17/11/2026, avant 3 %), de la vente < 2 % (15/11/2026)
 const OLD_HOURS=24; // badge « différé » : cotation de plus de 24 h (rien en dessous)
 const ageH=l=>{if(!l.coursDate)return 0;const t=new Date(l.coursDate+"T"+(/^\d\d:\d\d$/.test(l.coursHeure||"")?l.coursHeure:"17:35"));return (Date.now()-t)/36e5;};
@@ -383,6 +384,8 @@ function evaluate(l){
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
     else if(c<=p&&isAct(l)&&n(l.higgons?.note)!=null&&n(l.higgons.note)<=2&&!a.manuel&&!(l.lynch?.etoilePeg||l.lynch?.etoileDividende))
       r={cls:"p-gone",tag:"Pari non retenu",k:null,rk:3,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais note ${l.higgons.note}★ sans étoile de Lynch : pas de signal d'achat (règle du 08/11/2026)`};
+    else if(c<=p&&isAct(l)&&!a.manuel&&a.horsFiltre) r={cls:"p-gone",tag:"Hors filtre PER",k:null,rk:3,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais ${esc(a.horsFiltre)} : pas d'achat (règle du 21/11/2026)`};
+    else if(c<=p&&isAct(l)&&!a.manuel&&a.attenteCreux) r={cls:"p-warn",tag:"Attente d'un creux",k:"soonbuy",rk:2,txt:`Cours sous le seuil de <b>${eur1(p)}</b> · ${esc(a.attenteCreux)}`};
     else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}${limTxt(a)}`};
     else{
       const soon=dl!=null&&dl<=SOON_DAYS, near=(c-p)/p<NEAR_BUY; // écart mesuré par rapport au seuil, comme la routine
@@ -400,10 +403,10 @@ function evaluate(l){
       r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:n(l.vente?.ordrePct)?`Une fois acheté à ${eur(pa)} : alerte à <b>${eur(pa*(1+(n(l.vente.alertePct)??0.2)))}</b>, ordre de vente à <b>${eur(pa*(1+n(l.vente.ordrePct)))}</b> (+${Math.round(n(l.vente.ordrePct)*100)} %)${o!=null?` · cible ${eur(o)} (repère)`:""}`:`Pari une fois acheté à ${eur(pa)} : tout à <b>${eur(pa*1.2)}</b> (+20 %)${o!=null?` · cible ${eur(o)} (repère)`:""}`};}
     else if(!(Q(l)>0)) r={cls:"p-ok",tag:"Revente visée",k:null,rk:3,txt:`${o!=null?`Cible <b>${eur(o)}</b> une fois achetée (${(()=>{const pa=n(l.achat?.prixDerive)??n(l.achat?.prix);return pa?pct((o-pa)/pa)+" vs prix d'achat":pct((o-c)/c)+" vs cours";})()})`:"Pas de cible"}${s!=null?` · stop ${eur(s)}`:""}`};
     else if(s!=null&&c<=s) r={cls:"p-sell",tag:"Stop atteint",k:"sell",rk:0,txt:`Cours sous le stop de <b>${eur(s)}</b> — vendre`};
-    else if(o!=null&&c>=o) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
+    else if(o!=null&&c>=o&&!VENTE_FIXE) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
     // règle du 11/11/2026 : action détenue → « Vendre » dès +20 % sur le PRU, « Presque à vendre » à moins de NEAR_PCT ; la cible reste affichée comme repère
-    else if(p20(l)!=null&&!n(l.vente?.ordrePct)&&l.horizon?.type!=="court"&&svT(l,c)) {const t=svT(l,c);r=t.vendre?{cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:t.txt}:{cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:t.txt};}
-    else if(p20(l)!=null&&!n(l.vente?.ordrePct)&&l.horizon?.type!=="court"&&c>=p20(l)) r={cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:`${rsi80(l)?"+15 % (RSI > 80)":"+20 %"} atteint (${pct((c-l.pru)/l.pru)}) : le robot suit le plus haut et préviendra au premier recul`};
+    else if(!VENTE_FIXE&&p20(l)!=null&&!n(l.vente?.ordrePct)&&l.horizon?.type!=="court"&&svT(l,c)) {const t=svT(l,c);r=t.vendre?{cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:t.txt}:{cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:t.txt};}
+    else if(!VENTE_FIXE&&p20(l)!=null&&!n(l.vente?.ordrePct)&&l.horizon?.type!=="court"&&c>=p20(l)) r={cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:`${rsi80(l)?"+15 % (RSI > 80)":"+20 %"} atteint (${pct((c-l.pru)/l.pru)}) : le robot suit le plus haut et préviendra au premier recul`};
     else if(p20(l)!=null&&c>=p20(l)&&(n(l.vente?.ordrePct)||l.horizon?.type!=="court")) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:n(l.vente?.ordrePct)?`+${Math.round((n(l.vente?.alertePct)??0.2)*100)} % atteint : passer l'ordre à +${Math.round(n(l.vente.ordrePct)*100)} % = <b>${eur(l.pru*(1+n(l.vente.ordrePct)))}</b>${l.taux?` (≈ ${(l.pru*(1+n(l.vente.ordrePct))*l.taux).toFixed(2).replace(".",",")} $)`:""}`:`${rsi80(l)?`+15 % atteint avec RSI ${Math.round(l.quant.rsi14)} > 80`:"+20 % atteint"} : ${pct((c-l.pru)/l.pru)} vs PRU (seuil <b>${eur(p20(l))}</b>)${o!=null?` · cible ${eur(o)} (repère, encore ${pct((o-c)/c)})`:""}`};
     else if(p20(l)!=null&&c<p20(l)&&l.horizon?.type!=="court"&&(p20(l)-c)/p20(l)<NEAR_PCT) r={cls:"p-warn",tag:"Presque à vendre",k:"soonsell",rk:2,txt:`${rsi80(l)?"+15 % (RSI > 80)":"+20 %"} à <b>${eur(p20(l))}</b> · encore ${pct((p20(l)-c)/c)}${o!=null?` · cible ${eur(o)} (repère)`:""}`};
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Cible ${o!=null?`<b>${eur(o)}</b> `:""}non atteinte au ${fdate(v.avant)} — vendre ou prolonger ?`};
@@ -425,7 +428,7 @@ function evaluate(l){
     const base=op?`Plan : alerte à <b>${eur(pr*(1+ap))}</b> (+${Math.round(ap*100)} %), puis ordre de vente à <b>${eur(pr*(1+op))}</b> (+${Math.round(op*100)} %${l.taux?`, ≈ ${(pr*(1+op)*l.taux).toFixed(2).replace(".",",")} $`:""})${oc!=null?` · cible ${eur(oc)} (repère)`:""}`:`Court terme : à <b>${eur(pr*1.2)}</b> (+20 %, ou ${eur(pr*1.15)} si RSI > 80), suivi du plus haut puis tout vendre au premier recul${oc!=null?` · cible ${eur(oc)} (repère)`:""} · après 6 mois, tout vendre dès <b>${eur(pr*1.08)}</b> (+8 %)${ech!=null?` · ${ech>0?`dans ${ech} j`:"6 mois atteints"}`:""} · gain ${pct(g)}`;
     let r;
     const sv=!op?svT(l,c):null;
-    if(sv) r=sv.vendre?{cls:"p-sell",tag:"Tout vendre",k:"sell",rk:0,txt:sv.txt}:{cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:sv.txt};
+    if(!VENTE_FIXE&&sv) r=sv.vendre?{cls:"p-sell",tag:"Tout vendre",k:"sell",rk:0,txt:sv.txt}:{cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:sv.txt};
     else if(!op&&(g>=0.20||(g>=0.15&&rsi80(l)))) r={cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:base+` · seuil atteint : le robot suit le plus haut et préviendra au premier recul`};
     else if(g>=0.15&&rsi80(l)) r={cls:"p-sell",tag:"Vendre (+15 %)",k:"sell",rk:0,txt:base+` · RSI ${Math.round(l.quant.rsi14)} > 80 : sortie complète`};
     else if(g>=0.20) r={cls:"p-sell",tag:"Vendre (+20 %)",k:"sell",rk:0,txt:base};
