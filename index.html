@@ -39,6 +39,9 @@ header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;
 h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin:0;text-transform:uppercase}
 .sub{color:var(--muted);font-size:13px;margin-top:4px}
 .total{text-align:right}
+.topbar{display:flex;justify-content:flex-end}
+.topbar a{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line,#ccc);border-radius:999px;color:var(--ink);text-decoration:none;font-size:13px;font-weight:600;background:var(--surface)}
+.topbar a:active{opacity:.7}
 .total .v{font:500 18px var(--f-num)}
 .total .l{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .banner{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px}
@@ -294,6 +297,7 @@ fieldset{border-radius:16px}
 
 
 <div class="wrap">
+  <div class="topbar" id="topbar" hidden><a id="lienCarnet" target="_blank" rel="noopener">📝 Ordres préparés Fortuneo</a></div>
   <header>
     <div>
       <div class="hdl"><div><h1>Vigie Patrimoine</h1><div class="sub" id="today"></div></div><div class="hdb"><button type="button" class="btnRelever" id="btnReleverHaut" onclick="vigieRelever()" title="Lance le robot (2-3 min, sans IA)">↻ Rafraîchir les cours</button></div></div>
@@ -1101,6 +1105,8 @@ window.addEventListener("pageshow",e=>{if(e.persisted&&typeof window.subscribe==
   let unsubs=[], retry=null;
   window.subscribe=()=>{
     unsubs.forEach(u=>{try{u&&u();}catch{}}); unsubs=[]; clearTimeout(retry);
+    // bouton « Ordres préparés Fortuneo » (21/11/2026) : adresse dans journal/liens du dépôt privé (identifiant de compte hors dépôt public)
+    try{unsubs.push(db.collection("journal").doc("liens").onSnapshot(d=>{const u=d.exists?d.data()?.fortuneoCarnet:null;$("#topbar").hidden=!u;if(u)$("#lienCarnet").href=u;},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("jour").onSnapshot(d=>{jour=d.exists?d.data():null;renderJour();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("readme").onSnapshot(d=>{const r=d.exists?d.data():null,box=$("#readme");if(!box)return;if(!r||!r.md){box.hidden=true;return;}box.hidden=false;$("#readmeDate").textContent=r.date?`mis à jour le ${fdate(r.date)}`:"";try{$("#readmeBody").innerHTML=window.marked?marked.parse(r.md):`<pre>${esc(r.md)}</pre>`;}catch{$("#readmeBody").innerHTML=`<pre>${esc(r.md)}</pre>`;}},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("coherence").onSnapshot(d=>{coh=d.exists?d.data():null;renderCoh();},()=>{}));}catch{}
