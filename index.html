@@ -125,7 +125,7 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .pill{font:600 10px var(--f-body);letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;flex:none;border-radius:999px;white-space:nowrap}
 .p-buy{background:var(--buy-soft);color:var(--buy)} .p-sell{background:var(--sell-soft);color:var(--sell)}
 .p-warn{background:var(--warn-soft);color:var(--warn)} .p-gone{background:var(--gone-soft);color:var(--gone)}
-.p-ok{background:var(--sunk);color:var(--muted)}
+.p-ok{background:var(--sunk);color:var(--muted)} .p-drop{background:color-mix(in srgb,var(--drop) 16%,transparent);color:var(--drop)}
 .rule .txt{color:var(--muted)} .rule .txt b{color:var(--ink);font-weight:500}
 .bar{grid-column:1/-1;position:relative;height:38px}
 .bar.two{height:50px}
@@ -455,7 +455,7 @@ function evaluate(l){
 /* ordre à cours limité conseillé (robot, règle du 22/10/2026), affiché seulement s'il date du jour */
 const limTxt=a=>{const m=a?.limite;if(!m||n(m.prix)==null||m.date!==TODAY)return "";return ` · <span title="${esc(m.base||"")}"><b style="font-size:1.12em;color:var(--buy);white-space:nowrap">${m.rebond?"rebond après seuil : ":""}limite conseillée ${eur(+m.prix,2)}</b>${m.tendance?` (${esc(m.tendance)})`:""}</span>`;};
 /* ligne détenue sous PRU − 10 % : renfort à cours limité conseillé (robot, règle du 22/10/2026) */
-const renfTxt=l=>{const m=l.renfort;if(!m||n(m.prix)==null||m.date!==TODAY||!(n(l.cours)<=n(m.seuil)))return "";return `<div class="rule"><span class="pill p-buy" style="background:var(--drop);color:#fff">Renforcer ?</span><span class="txt" title="${esc(m.base||"")}">Cours sous PRU − 10 % (<b>${eur(+m.seuil,2)}</b>) · limite conseillée <b>${eur(+m.prix,2)}</b> (${esc(m.tendance||"")})</span></div>`;};
+const renfTxt=l=>{const m=l.renfort;if(!m||(isEtfCreux(l)&&!l.creux?.ok)||n(m.prix)==null||m.date!==TODAY||!(n(l.cours)<=n(m.seuil)))return "";return `<div class="rule"><span class="pill p-buy" style="background:var(--drop);color:#fff">Renforcer ?</span><span class="txt" title="${esc(m.base||"")}">Cours sous PRU − 10 % (<b>${eur(+m.seuil,2)}</b>) · limite conseillée <b>${eur(+m.prix,2)}</b> (${esc(m.tendance||"")})</span></div>`;};
 /* notes personnelles : le texte écrit entre guillemets dans le champ « note » est affiché dans la vignette */
 function memo(l){const t=String(l.note||"");const m=[...t.matchAll(/"([^"\n]+)"|“([^”\n]+)”/g)].map(x=>(x[1]||x[2]).trim()).filter(Boolean);return m.length?`<div class="hq memo">💬 ${m.map(esc).join(" · ")}</div>`:"";}
 function stars(l){
@@ -538,7 +538,7 @@ function live(l){
 /* ---- données ayant servi à l'analyse (champ « analyse », écrit par Claude depuis le robot de cours) ---- */
 function anaBlock(l){
   const a=l.analyse, h=l.higgons;
-  if(!a&&!h?.calcul&&!l.achat?.base) return "";
+  if(!a&&!h?.calcul&&!l.achat?.base&&!l.creux?.tests) return "";
   const num=(v,d=2)=>v==null||isNaN(v)?"—":Number(v).toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d});
   const pc=v=>v==null||isNaN(v)?"—":(v*100).toLocaleString("fr-FR",{maximumFractionDigits:1})+" %";
   let t="";
@@ -555,6 +555,8 @@ function anaBlock(l){
   if(a?.consensus?.mediane) p.push(`<span class="k">Analystes :</span> objectif médian ${num(a.consensus.mediane)} € (${a.consensus.nb||"?"} analystes)`);
   if(h?.calcul) p.push(`<span class="k">Seuil Higgons :</span> ${esc(h.calcul)}`);
   if(l.achat?.base) p.push(`<span class="k">Seuil d'achat :</span> ${esc(l.achat.base)}`);
+  {const k=l.creux;if(k?.tests){const L={ancien:"Ancienne (−10 % du plus haut)",plusbas8:"Plus bas 8 mois",rebond:"Baisse terminée",creux_rebond:"Plus bas 8 mois puis rebond"};const f=v=>v==null?"—":pc(v);
+    p.push(`<span class="k">Creux de l'ETF :</span> règle <b>${esc(L[k.regle]||k.regle)}</b>${k.valide===false?" (trop peu de signaux, règle par défaut)":""} · test sur ${esc(k.periode?.[0]||"")} → ${esc(k.periode?.[1]||"")}${k.proxy?` avec ${esc(k.proxy)}`:""}</p><div class="tw"><table><thead><tr><th>Règle</th><th>Signaux</th><th>6 mois</th><th>12 mois</th><th>Gagnants 6 m</th><th>Plongée</th></tr></thead><tbody>${Object.keys(L).map(r=>{const t=k.tests[r]||{};return `<tr><td>${r===k.regle?"<b>":""}${L[r]}${r===k.regle?"</b>":""}</td><td>${t.n??0}</td><td>${f(t.m6)}</td><td>${f(t.m12)}</td><td>${f(t.pos6)}</td><td>${f(t.plongee)}</td></tr>`;}).join("")}<tr><td>Sans signal (moyenne)</td><td>—</td><td>${f(k.base6)}</td><td>—</td><td>—</td><td>—</td></tr></tbody></table></div><p><span class="k">Performance moyenne après chaque signal ; plongée = pire baisse moyenne dans les 6 mois. Peu de signaux en 5 ans : indicatif.</span>`);}}
   if(a?.devise&&a.devise!=="EUR") p.push(`<span class="k">Comptes publiés en ${esc(a.devise)} : montants du tableau dans cette devise.</span>`);
   if(a?.date) p.push(`<span class="k">Relevé du ${fdate(a.date)} · ${esc(a.source||"")}${est.length?" · en italique : estimations des analystes":""}</span>`);
   return `<details class="ana"><summary>Données de l'analyse</summary>${t}${p.map(x=>`<p>${x}</p>`).join("")}</details>`;
@@ -752,7 +754,13 @@ const isDropRaw=l=>{const c=n(l.cours),v=violet(l);return c!=null&&v!=null&&c<=v
 /* longue baisse en cours (règle du 30/10/2026) : sous la moyenne 200 séances, pente annuelle négative et tendance courte pas encore « remonte » → pas de violet */
 const longDecline=l=>false; // règle « longue baisse » supprimée le 31/10/2026 (backtest 10 ans : acheter en tendance baissière a mieux marché)
 const isFalling=l=>isDropRaw(l)&&longDecline(l);
-const isDrop=l=>isDropRaw(l)&&!longDecline(l);
+/* ETF : le −10 % ne suffit plus, il faut un creux propre à l'ETF (règle du 21/11/2026, calcul du robot : champ « creux »,
+   règle choisie ETF par ETF sur 5 ans, voir donnees/creux_etf.json). Sans calcul du robot : pas de violet. */
+const CREUX_LAB={plusbas8:"cours au plus bas des 8 derniers mois",rebond:"baisse terminée (rebond amorcé)",creux_rebond:"plus bas 8 mois touché puis rebond"};
+const isEtfCreux=l=>typeOf(l)==="ETF"||!!l.creux;
+const isDrop=l=>isDropRaw(l)&&!longDecline(l)&&(!isEtfCreux(l)||!!l.creux?.ok);
+const creuxTxt=l=>{if(!isEtfCreux(l)||!isDropRaw(l))return "";const k=l.creux||{},ok=!!k.ok,r=k.regle||"plusbas8";
+  return `<div class="rule"><span class="pill ${ok?"p-drop":"p-ok"}">${ok?"Creux":"Pas de creux"}</span><span class="txt">−10 % sous le PRU · règle testée sur 5 ans : <b>${CREUX_LAB[r]||r}</b>${r!=="rebond"&&n(k.plusBas8?.v)?` · plus bas 8 mois ${eur(+k.plusBas8.v)} (${fdate(k.plusBas8.d)})`:""}${ok?"":r==="rebond"?" · la baisse continue":" · pas encore atteint"}${k.date?"":" · en attente du calcul du robot"}</span></div>`;};
 const protSeen=new Set();
 function markProtected(){ // mémorise le cliquet dans la base quand une ligne passe au-delà de +5 %
   return; // cliquet « protege » supprimé le 20/10/2026
@@ -838,7 +846,7 @@ function render(){
   const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return h>0&&c!=null&&c<=h;};
   const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,hg:0};
   ev.filter(inScope).forEach(({l,e})=>{const ks=new Set(e.rules.map(r=>r.k).filter(Boolean));ks.forEach(k=>{if(k in cnt)cnt[k]++;});if(isDrop(l))cnt.drop++;if(isHg(l))cnt.hg++;});
-  const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU, ou PRU si +5 % atteint)",soonbuy:`Proches de l'achat (< ${String(NEAR_BUY*100).replace('.',',')} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,hg:"Sous le seuil Higgons"};
+  const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU ; ETF : avec un creux)",soonbuy:`Proches de l'achat (< ${String(NEAR_BUY*100).replace('.',',')} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,hg:"Sous le seuil Higgons"};
   $("#signals").innerHTML=Object.keys(cnt).map(k=>`<button class="sig" type="button" data-k="${k}" aria-pressed="${filterSig===k}"><span class="n">${cnt[k]}</span><span class="t">${labels[k]}</span></button>`).join("");
   // types d'actifs + bouton tout réafficher
   $("#types").innerHTML=TYPES.filter(t=>lines.some(l=>typeOf(l)===t)).map(t=>`<button class="chip" type="button" data-type="${t}" aria-pressed="${filterType===t}">${t} <span class="num">${lines.filter(l=>typeOf(l)===t).length}</span></button>`).join("")+
@@ -958,7 +966,7 @@ function rowHtml(l,e,c,stale,pl,drop,fall){
       ${(()=>{const t=qnt(l)+sur(l)+fct(l)+dirig(l)+marq(l)+medal(l)+conc(l)+spk(l)+bx(l)+dcr(l)+drv(l)+rvb(l)+clm(l);return t?`<div class="tags">${t}</div>`:"";})()}
       ${(()=>{const p=[];if(l.code&&String(l.code).length>8)p.push(esc(l.code));if(n(l.qte))p.push(`${l.qte.toLocaleString("fr-FR")} part${l.qte>1?"s":""}`);if(n(l.pru))p.push(`<span class="nw">PRU ${eur(l.pru)}${n(l.qte)>0?'&nbsp;<span class="okin" title="Ligne achetée">👍</span>':""}</span>`);const v=l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:"";return p.length||v?`<div class="code cl">${p.join(" · ")}${v}</div>`:"";})()}${(()=>{const m=maxTxt(l);return m?`<div class="code cl">${m}</div>`:"";})()}
       ${(()=>{const h=crit(l)+lynchTxt(l)+vebitTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${abrege(h)}</div>`:"";})()}
-      <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}</div>
+      <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}${creuxTxt(l)}</div>
       ${bar(l)}
     </button>`;
 }
