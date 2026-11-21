@@ -761,9 +761,9 @@ const CREUX_LAB={plusbas8:"cours au plus bas des 8 derniers mois",rebond:"baisse
 const isEtfCreux=l=>typeOf(l)==="ETF"||!!l.creux;
 /* action seule en forte baisse (règle du 21/11/2026, calcul du robot : champ « forteBaisse ») : sous la moyenne 200 séances qui baisse,
    perf. 12-1 mois < −15 % → pas de renfort tant que le cours n'a pas rebondi de 5 % au-dessus du plus bas 6 mois (champ « fin »). */
-const fbEnCours=l=>!!l.forteBaisse&&!l.forteBaisse.fin;
+const fbEnCours=l=>(!!l.forteBaisse&&!l.forteBaisse.fin)||(isEtfCreux(l)&&!!l.renfortFait); /* ETF : un seul renfort par baisse (21/11/2026) */
 const isDrop=l=>isDropRaw(l)&&!longDecline(l)&&(!isEtfCreux(l)||!!l.creux?.ok)&&!fbEnCours(l);
-const creuxTxt=l=>{if(!isEtfCreux(l)||!isDropRaw(l)||!l.creux?.ok)return ""; /* pas de creux : aucune action, ligne masquée (21/11/2026) */const k=l.creux||{},ok=!!k.ok,r=k.regle||"plusbas8";
+const creuxTxt=l=>{if(!isEtfCreux(l)||!isDropRaw(l)||!l.creux?.ok||l.renfortFait)return ""; /* pas de creux : aucune action, ligne masquée (21/11/2026) */const k=l.creux||{},ok=!!k.ok,r=k.regle||"plusbas8";
   return `<div class="rule"><span class="pill ${ok?"p-drop":"p-ok"}">${ok?"Creux":"Pas de creux"}</span><span class="txt">−10 % sous le PRU · règle testée sur 5 ans : <b>${CREUX_LAB[r]||r}</b>${r!=="rebond"&&n(k.plusBas8?.v)?` · plus bas 8 mois ${eur(+k.plusBas8.v)} (${fdate(k.plusBas8.d)})`:""}${ok?"":r==="rebond"?" · la baisse continue":" · pas encore atteint"}${k.date?"":" · en attente du calcul du robot"}</span></div>`;};
 const protSeen=new Set();
 function markProtected(){ // mémorise le cliquet dans la base quand une ligne passe au-delà de +5 %
