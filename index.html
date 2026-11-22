@@ -97,6 +97,7 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .conc.c-moyen{color:var(--warn);background:var(--warn-soft)}
 .hq{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
 .hq .perhi{color:var(--down);font-weight:700}
+.perb{display:inline-block;margin-top:3px;font-size:13px;font-weight:700;padding:1px 7px;border-radius:6px;border:1px solid currentColor;white-space:nowrap}.perb.ok{color:var(--up)}.perb.moy{color:var(--ink)}.perb.hi{color:var(--down)}.perb.na{color:var(--muted);font-weight:600}
 .hqw{grid-column:1/-1;min-width:0;font-size:11px;line-height:.9;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:8;line-clamp:8;overflow:hidden}
 .hqw .hq{display:inline;margin:0}.hqw .hq+.hq::before{content:" · "}
 .hq .y{color:var(--up)} .hq .x{color:var(--muted);opacity:.7}
@@ -504,6 +505,22 @@ function lynchStars(l){ // critères de Peter Lynch (08/11/2026) : ★ bleue = P
   if(y.etoileDividende) h+=`<span class="lyn div" title="Lynch : (croissance ${g} % + rendement ${(y.rendement*100).toFixed(1).replace(".",",")} %) ÷ PER ${String(y.per).replace(".",",")} = ${String(y.pegDividende).replace(".",",")} ≥ 2">★</span>`;
   return h;}
 
+function perL(l){ // PER bien visible sur chaque ligne (22/11/2026) : cours du jour ÷ BPA estimé (comme le PER moyen), sinon PER des critères
+  if(typeOf(l)!=="Actions"||l.env==="PEE") return null;
+  const a=l.analyse||{},r=a.ratios||{},c=n(l.cours),b=n(a.estimations?.[r.perBase]);
+  if(c!=null&&b!=null&&(a.devise||"EUR")==="EUR") return b>0?{v:c/b,src:`cours ${eur(c)} ÷ BPA ${esc(r.perBase||"")} ${eur(b)}`}:{v:null,src:"bénéfice estimé négatif"};
+  if(n(r.per)!=null) return {v:+r.per,src:`PER ${esc(r.perBase||"")} de l'analyse`};
+  const k=(l.higgons?.criteres||[]).map(x=>x.k||"").find(k=>/\bPER\b/.test(k));
+  if(!k) return null;
+  const m=k.replace(/PER\s+(?:20\d\d)e?\s*/,"PER ").match(/PER\D{0,12}?(\d{1,3}(?:,\d+)?)(?![\d,e])/);
+  return m?{v:parseFloat(m[1].replace(",",".")),src:esc(k)}:/négatif|non significatif|non calculable/.test(k)?{v:null,src:esc(k)}:null;
+}
+function perBadge(l){
+  const p=perL(l); if(!p) return "";
+  if(p.v==null) return `<div><span class="perb na" title="PER non significatif (${p.src})">PER n.s.</span></div>`;
+  const cls=p.v<=10?"ok":p.v<=12?"moy":"hi";
+  return `<div><span class="perb ${cls}" title="PER ${p.v.toFixed(1).replace(".",",")} : ${p.src}. Vert ≤ 10, noir 10-12, rouge > 12 (critère Higgons)">PER ${p.v.toFixed(1).replace(".",",")}</span></div>`;
+}
 function crit(l){
   const c=l.higgons?.criteres; if(!Array.isArray(c)||!c.length) return "";
   // PER au-dessus de 12 (critère Higgons) : seul le chiffre passe en rouge
@@ -968,7 +985,7 @@ function rowHtml(l,e,c,stale,pl,drop,fall){
     return `<button class="row" type="button" data-id="${esc(l.id)}" style="--stripe:${drop?"var(--drop)":fall?"var(--muted)":e.rank===0?(e.rules.some(r=>r.k==="sell")?"var(--sell)":"var(--buy)"):e.rank===2&&e.rules.some(r=>r.k==="soonsell")?"var(--near-sell)":e.rank===2&&e.rules.some(r=>r.k==="soonbuy")?"var(--near-buy)":stripe[e.rank]}"${drop?' title="Cours sous le seuil violet"':fall?' title="Sous PRU − 10 %, mais longue baisse en cours (sous la moyenne 200 séances) : pas encore de renfort"':""}>
       <div style="min-width:0"><div class="name"><span class="nmw">${esc(l.nom)}&nbsp;<span class="env">${esc(l.env)}</span></span>${l.peaPme?.eligible&&l.env!=="PEA-PME"?`<span class="env" title="Éligible au PEA-PME (${esc(l.peaPme.liste||"")})">PME</span>`:""}${stars(l)}${lynchStars(l)}${l.code&&String(l.code).length<=8?`<span class="mnemo" title="Mnémonique">${esc(l.code)}</span>`:""}</div></div>
       <div class="price"><div class="c num">${eur(c)}${live(l)}</div>
-        <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}" title="${l.env==="PEE"?`Sur 12 mois glissants (cours du ${fdate(l.an.date)} : ${eur(l.an.cours)})`:"Depuis le PRU"}">${pct(pl)}${l.env==="PEE"?" 12 m":""}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}</div>
+        <div class="d ${stale?"stale":""}">${pl!=null?`<span class="pl ${pl>=0?"pos":"neg"}" title="${l.env==="PEE"?`Sur 12 mois glissants (cours du ${fdate(l.an.date)} : ${eur(l.an.cours)})`:"Depuis le PRU"}">${pct(pl)}${l.env==="PEE"?" 12 m":""}</span> · `:""}${l.coursDate?(stale?"cours du ":"")+fdate(l.coursDate)+(typeOf(l)==="Fonds"||l.coursHeure==="VL"?" VL":l.coursHeure?" "+esc(l.coursHeure):"") /* fonds : valeur liquidative du jour, sans heure (09/11/2026) */:""}${ageH(l)>OLD_HOURS?' <span class="old" title="Cours de plus de 24 h">différé</span>':""}</div>${vlInfo(l)}${perBadge(l)}</div>
       ${(()=>{const t=qnt(l)+sur(l)+fct(l)+dirig(l)+marq(l)+medal(l)+conc(l)+spk(l)+bx(l)+dcr(l)+drv(l)+rvb(l)+clm(l);return t?`<div class="tags">${t}</div>`:"";})()}
       ${(()=>{const p=[];if(l.code&&String(l.code).length>8)p.push(esc(l.code));if(n(l.qte))p.push(`${l.qte.toLocaleString("fr-FR")} part${l.qte>1?"s":""}`);if(n(l.pru))p.push(`<span class="nw">PRU ${eur(l.pru)}${n(l.qte)>0?'&nbsp;<span class="okin" title="Ligne achetée">👍</span>':""}</span>`);const v=l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:"";return p.length||v?`<div class="code cl">${p.join(" · ")}${v}</div>`:"";})()}${(()=>{const m=maxTxt(l);return m?`<div class="code cl">${m}</div>`:"";})()}
       ${(()=>{const h=crit(l)+lynchTxt(l)+vebitTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${abrege(h)}</div>`:"";})()}
