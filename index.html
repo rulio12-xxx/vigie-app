@@ -785,6 +785,10 @@ const fbEnCours=l=>(!!l.forteBaisse&&!l.forteBaisse.fin)||(isEtfCreux(l)&&!!l.re
 const isDrop=l=>isAct(l)?renfTxt(l)!=="" /* action : violet seulement quand le renfort suiveur est déclenché (21/11/2026) */:isDropRaw(l)&&!longDecline(l)&&(!isEtfCreux(l)||!!l.creux?.ok)&&!fbEnCours(l);
 const creuxTxt=l=>{if(!isEtfCreux(l)||!isDropRaw(l)||!l.creux?.ok||l.renfortFait)return ""; /* pas de creux : aucune action, ligne masquée (21/11/2026) */const k=l.creux||{},ok=!!k.ok,r=k.regle||"plusbas8";
   return `<div class="rule"><span class="pill ${ok?"p-drop":"p-ok"}">${ok?"Creux":"Pas de creux"}</span><span class="txt">−10 % sous le PRU · règle testée sur 5 ans : <b>${CREUX_LAB[r]||r}</b>${r!=="rebond"&&n(k.plusBas8?.v)?` · plus bas 8 mois ${eur(+k.plusBas8.v)} (${fdate(k.plusBas8.d)})`:""}${ok?"":r==="rebond"?" · la baisse continue":" · pas encore atteint"}${k.date?"":" · en attente du calcul du robot"}</span></div>`;};
+/* fonds d'assurance vie « alerteBas8 » (22/11/2026, Pictet Clean Energy) : VL au plus bas des 8 derniers mois (calcul du robot, champ « bas8 »).
+   Affiché seulement quand l'alerte est active ; pas d'ordre automatique : arbitrage à demander à l'assureur. */
+const bas8Txt=l=>{const b=l.bas8;if(!l.alerteBas8||!b?.actif)return "";
+  return `<div class="rule"><span class="pill p-drop">Plus bas 8 mois</span><span class="txt">VL ${eur(+b.vl)} (${fdate(b.vlDate)}) · seuil ${eur(+b.seuil)} (plus bas ${eur(+b.bas)} le ${fdate(b.basDate)} + 1 %) · <b>faire un arbitrage auprès de l'assureur</b> (pas d'ordre automatique)</span></div>`;};
 const protSeen=new Set();
 function markProtected(){ // mémorise le cliquet dans la base quand une ligne passe au-delà de +5 %
   return; // cliquet « protege » supprimé le 20/10/2026
@@ -991,7 +995,7 @@ function rowHtml(l,e,c,stale,pl,drop,fall){
       ${(()=>{const t=qnt(l)+sur(l)+fct(l)+dirig(l)+marq(l)+medal(l)+conc(l)+spk(l)+bx(l)+dcr(l)+drv(l)+rvb(l)+clm(l);return t?`<div class="tags">${t}</div>`:"";})()}
       ${(()=>{const p=[];if(l.code&&String(l.code).length>8)p.push(esc(l.code));if(n(l.qte))p.push(`${l.qte.toLocaleString("fr-FR")} part${l.qte>1?"s":""}`);if(n(l.pru))p.push(`<span class="nw">PRU ${eur(l.pru)}${n(l.qte)>0?'&nbsp;<span class="okin" title="Ligne achetée">👍</span>':""}</span>`);const v=l.vendu?` <span class="sold" title="Vendue${l.vendu.date?" le "+fdate(l.vendu.date):""} : gardée pour mémoire, hors totaux, dividendes et plus-values">$</span>`:"";return p.length||v?`<div class="code cl">${p.join(" · ")}${v}</div>`:"";})()}${(()=>{const m=maxTxt(l);return m?`<div class="code cl">${m}</div>`:"";})()}
       ${(()=>{const h=crit(l)+lynchTxt(l)+vebitTxt(l)+memo(l)+(l.concentration?.txt&&l.concentration.niveau!=="faible"?`<div class="hq">Concentration ${esc(l.concentration.type||"client")} : ${esc(l.concentration.txt)}</div>`:"");return h?`<div class="hqw">${abrege(h)}</div>`:"";})()}
-      <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}${creuxTxt(l)}</div>
+      <div class="rules">${e.rules.map(r=>`<div class="rule"><span class="pill ${r.cls}">${r.tag}</span><span class="txt">${r.txt}</span></div>`).join("")}${renfTxt(l)}${creuxTxt(l)}${bas8Txt(l)}</div>
       ${bar(l)}
     </button>`;
 }
