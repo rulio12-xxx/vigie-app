@@ -631,7 +631,7 @@ function renderCarte(){
   const gain=l=>l.env==="PEE"?(n(l.an?.cours)>0?l.cours/l.an.cours-1:null):(n(l.pru)?l.cours/l.pru-1:null);
   const col=g=>{if(g==null)return "var(--sunk)";const k=Math.min(1,Math.abs(g)/0.25);return `color-mix(in srgb, ${g>=0?"var(--up)":"var(--down)"} ${Math.round(18+k*62)}%, var(--surface))`;};
   const pc=g=>g==null?"":`${g>=0?"+":"−"}${Math.abs(g*100).toLocaleString("fr-FR",{maximumFractionDigits:1})} %`;
-  const L=lines.filter(l=>Q(l)>0&&n(l.cours)).map(l=>({l,v:Q(l)*l.cours,g:gain(l)})).filter(x=>x.v>0);
+  const L=lines.filter(l=>!l.masque&&Q(l)>0&&n(l.cours)).map(l=>({l,v:Q(l)*l.cours,g:gain(l)})).filter(x=>x.v>0);
   const tuile=(t)=>{const big=t.w>46&&t.h>26,mid=!big&&t.w>26&&t.h>14,nm=esc(l2nm(t.l)),cd=esc(t.l.mnemo||(t.l.code&&t.l.code!=="FCPE"&&!/^[A-Z]{2}\d/.test(t.l.code)?t.l.code:l2nm(t.l).slice(0,5)));
     return `<div class="tu" data-go="${esc(t.l.id)}" style="left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px;background:${col(t.g)}" title="${esc(t.l.nom)} · ${eur(t.v,0)}${t.g!=null?" · "+pc(t.g)+(t.l.env==="PEE"?" sur 12 mois":" depuis le PRU"):""}">${big?`<b>${nm}</b><span>${eur(t.v,0)}${t.h>38&&t.g!=null?"<br>"+pc(t.g):""}</span>`:mid?`<b style="font-size:9px">${cd}</b>`:""}</div>`;};
   const bloc=(liste,H,grouper)=>{
@@ -855,7 +855,7 @@ function fixBars(){
 let fixT=null;addEventListener("resize",()=>{clearTimeout(fixT);fixT=setTimeout(fixBars,150);});
 function render(){
   $("#today").textContent=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-  const ev=lines.map(l=>({l,e:evaluate(l)}));
+  const ev=lines.filter(l=>!l.masque).map(l=>({l,e:evaluate(l)})); // lignes masquées (23/11/2026, ex. Abionyx) : ni affichées ni comptées dans les alertes, mais gardées dans les totaux
   // au moins une ligne « proche » (07/11/2026) : si aucune n'est sous le seuil de 3 %, la plus proche de son prix d'achat (non détenue)
   // et la plus proche de son objectif de vente (détenue) sont signalées « La plus proche »
   {const has=k=>ev.some(x=>x.e.rules.some(r=>r.k===k));
