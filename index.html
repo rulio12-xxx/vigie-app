@@ -406,7 +406,7 @@ function evaluate(l){
     else if(s!=null&&c<=s) r={cls:"p-sell",tag:"Stop atteint",k:"sell",rk:0,txt:`Cours sous le stop de <b>${eur(s)}</b> — vendre`};
     else if(Q(l)>0&&n(v.rebond)!=null&&c>=n(v.rebond)) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Remontée atteinte : cours ≥ <b>${eur(n(v.rebond))}</b> — tout vendre${s!=null?` (stop ${eur(s)})`:""}`};
     else if(Q(l)>0&&n(v.rebond)!=null) r={cls:"p-warn",tag:"Vente sur remontée",k:"soonsell",rk:2,txt:`Vendre tout à <b>${eur(n(v.rebond))}</b> (encore ${pct((n(v.rebond)-c)/c)})${s!=null?` · stop <b>${eur(s)}</b> (${pct((s-c)/c)})`:""}`};
-    else if(o!=null&&c>=o&&!VENTE_FIXE) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
+    else if(o!=null&&c>=o&&(!VENTE_FIXE||(v.manuel&&l.env==="PEE"))) r={cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:`Cible de <b>${eur(o)}</b> atteinte${n(l.pru)?` · ${pct((c-l.pru)/l.pru)} vs PRU`:""}`};
     // règle du 11/11/2026 : action détenue → « Vendre » dès +20 % sur le PRU, « Presque à vendre » à moins de NEAR_PCT ; la cible reste affichée comme repère
     else if(!VENTE_FIXE&&p20(l)!=null&&!n(l.vente?.ordrePct)&&l.horizon?.type!=="court"&&svT(l,c)) {const t=svT(l,c);r=t.vendre?{cls:"p-sell",tag:"Vendre",k:"sell",rk:0,txt:t.txt}:{cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:t.txt};}
     else if(!VENTE_FIXE&&p20(l)!=null&&!n(l.vente?.ordrePct)&&l.horizon?.type!=="court"&&c>=p20(l)) r={cls:"p-warn",tag:"Suivi +20 %",k:"soonsell",rk:2,txt:`${rsi80(l)?"+15 % (RSI > 80)":"+20 %"} atteint (${pct((c-l.pru)/l.pru)}) : le robot suit le plus haut et préviendra au premier recul`};
