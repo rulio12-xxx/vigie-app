@@ -925,7 +925,7 @@ function render(){
     const ct=lines.filter(l=>l.env===e&&Q(l)>0&&n(l.cours)&&l.horizon?.type==="court").reduce((s,l)=>s+Q(l)*l.cours,0);
     const pc=tot?c/tot:0,pk=tot?ct/tot:0,f=v=>(v*100).toLocaleString("fr-FR",{maximumFractionDigits:1})+" %";
     const info=[`espèces ${eur(c,0)} (${pc>0.05?`<b class="neg">${f(pc)} &gt; 5 %</b>`:f(pc)})`].filter(Boolean).join(" · "); // part des paris retirée de la ligne (23/11/2026, demande de l'utilisateur)
-    return `<tr class="tot"><td>${esc(e)} · gain réel</td><td>${eur(tot,0)}</td><td class="${g>=0?"pos":"neg"}">${g>=0?"+":"−"}${eur(Math.abs(g),0)}</td><td class="${g>=0?"pos":"neg"}">${pct(g/vs)}</td><td class="nc">titres + espèces &amp; ${eur(vs,0)} versés</td></tr>`
+    return `<tr class="tot"><td>${esc(e)} · gain</td><td>${eur(tot,0)}</td><td class="${g>=0?"pos":"neg"}">${g>=0?"+":"−"}${eur(Math.abs(g),0)}</td><td class="${g>=0?"pos":"neg"}">${pct(g/vs)}</td><td class="nc">titres + espèces &amp; ${eur(vs,0)} versés</td></tr>`
       +rowS(`${esc(e)} · titres`,x.a,"",`investies · ${info}`);};
   const totA=(()=>{const a=agg(lines);return {...a,v:a.v+cashT};})();
   $("#synth").innerHTML=envRows.length?`<table><thead><tr><th>Enveloppe</th><th>Valeur</th><th title="PEE : sur 12 mois glissants · autres enveloppes : depuis le PRU">Plus-value</th><th>%</th><th></th></tr></thead><tbody>${envRows.map(x=>rowP(x)??(rowS(esc(x.e),x.a,"",nc(x.e,x.a))+rowC(x.e)+rowV(x.e)+rowH(x.e))).join("")}${rowS("Total",totA,"tot","")  /* 15/11/2026 : mention « espèces incluses · PEE sur 12 mois, le reste depuis le PRU » retirée (détail au survol de « Plus-value ») */}</tbody></table>`:"";
