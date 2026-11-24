@@ -39,9 +39,19 @@ header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;
 h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin:0;text-transform:uppercase}
 .sub{color:var(--muted);font-size:13px;margin-top:4px}
 .total{text-align:right}
-.topbar{display:flex;justify-content:flex-end}
-.topbar a{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line,#ccc);border-radius:999px;color:var(--ink);text-decoration:none;font-size:13px;font-weight:600;background:var(--surface)}
-.topbar a:active{opacity:.7}
+.topbar{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.topbar a[hidden]{display:none}
+.topbar button{font:inherit;cursor:pointer}
+.oj-row{display:grid;grid-template-columns:24px 1fr;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.oj-row input[type=checkbox]{width:18px;height:18px;margin-top:2px}
+.oj-row .oj-t{font-weight:600;overflow-wrap:anywhere}.oj-row .oj-m{color:var(--muted);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+.oj-f{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:13px}
+.oj-f input{font:inherit;width:84px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.oj-st{margin-top:6px;font-size:12px;font-weight:600}.oj-st.ok{color:var(--up)}.oj-st.dbl{color:var(--warn,#b26a00)}
+.oj-row .t-achat{color:var(--buy)}.oj-row .t-vente{color:var(--sell)}.oj-row.fait{opacity:.6}.oj-h{font-weight:700;margin-top:6px}
+.oj-x{font:inherit;font-size:11px;background:none;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--muted);cursor:pointer;margin-left:6px}
+.topbar a,.topbar button{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line,#ccc);border-radius:999px;color:var(--ink);text-decoration:none;font-size:13px;font-weight:600;background:var(--surface)}
+.topbar a:active,.topbar button:active{opacity:.7}
 .total .v{font:500 18px var(--f-num)}
 .total .l{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .banner{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px}
@@ -298,7 +308,7 @@ fieldset{border-radius:16px}
 
 
 <div class="wrap">
-  <div class="topbar" id="topbar" hidden><a id="lienCarnet" target="_blank" rel="noopener">📝 Ordres préparés Fortuneo</a></div>
+  <div class="topbar" id="topbar"><button type="button" id="btnOrdres" class="topbtn" onclick="openOrdres()" title="Ordres à passer aujourd'hui selon les règles, en écartant ceux déjà exécutés, au carnet ou déjà préparés">✅ Préparer les ordres</button><a id="lienCarnet" target="_blank" rel="noopener" hidden>📝 Ordres préparés Fortuneo</a></div>
   <header>
     <div>
       <div class="hdl"><div><h1>Vigie Patrimoine</h1><div class="sub" id="today"></div></div><div class="hdb"><button type="button" class="btnRelever" id="btnReleverHaut" onclick="vigieRelever()" title="Lance le robot (2-3 min, sans IA)">↻ Rafraîchir les cours</button></div></div>
@@ -662,6 +672,110 @@ function renderTx(){
   $("#tx").innerHTML=`<select id="txEnv"><option value="">Toutes les enveloppes</option>${envs.map(e=>`<option ${e===txEnv?"selected":""}>${esc(e)}</option>`).join("")}</select>
   <table><thead><tr><th class="l">Date</th><th class="l">Ligne</th><th class="l">Env.</th><th class="l">Type</th><th>Qté</th><th>Prix</th><th>Montant</th></tr></thead><tbody>${L.map(t=>`<tr title="${esc(t.source||"")}"><td class="l">${t.date?fdate(t.date):"avant suivi"}</td><td class="l">${esc(t.nom||t.id||"")}</td><td class="l">${esc(t.env||"")}</td><td class="l t-${esc(t.type==="vente"?"vente":t.type==="achat"||t.type==="versement"?"achat":"x")}">${esc(t.type||"")}</td><td>${fq(t.qte)}</td><td>${t.prix!=null?eur(+t.prix):"—"}</td><td>${t.montant!=null?eur(+t.montant):"—"}</td></tr>`).join("")}</tbody></table>`;
   const sel=$("#txEnv"); if(sel) sel.onchange=()=>{txEnv=sel.value;renderTx();};
+}
+/* ---- ordres du jour (24/11/2026, demande de Rulio12) : bouton « Préparer les ordres du jour » à côté du carnet Fortuneo.
+   Liste les ordres à passer selon les règles (mêmes signaux que les lignes : acheter, vendre, renfort, creux, stop −30 %,
+   ordre de revente à préparer dans les 3 jours suivant un achat, arbitrage d'assurance vie) et écarte les doublons :
+   exécuté aujourd'hui (journal des transactions, avis Fortuneo), déjà au carnet (achat.ordre), déjà préparé ici (document
+   « journal/ordres » : {liste:[{date,heure,id,nom,env,sens,qte,prix,validite}]}, gardé 30 jours), achat ou vente des 5 derniers jours (à vérifier). ---- */
+let ordresPrep=null, ojListe=[];
+const OJ_STOCK=["amundi-pea-court-terme","bnp-easy-stoxx600"];
+const ojFrais=l=>1+Math.max(0,2*0.0035+((l.ttf||(String(l.isin||"").startsWith("FR")&&(n(l.vebit?.capi)||0)>=1000))?0.004:0)-0.01);
+function ordresDuJour(){
+  const out=[], r2=x=>Math.round(x*100)/100;
+  const add=(l,sens,motif,prix,qte,validite)=>out.push({id:l.id,nom:l.nom,env:l.env,sens,motif,cours:n(l.cours),prix:prix!=null&&isFinite(prix)?r2(prix):null,qte:qte>0?qte:null,validite:validite||"jour"});
+  const cap6=(l,prix)=>{if(l.env!=="PEA"&&l.env!=="PEA-PME")return null;const te=envTot(l.env);if(!te||!prix)return null;const nb=Math.floor((0.06*te-(Q(l)||0)*(n(l.cours)||0))/prix);return nb>0?nb:null;};
+  const rpNb=l=>{const r=l.renfortPossible;return r&&r.date===TODAY&&n(r.nb)>0?n(r.nb):null;};
+  lines.filter(l=>!l.masque).forEach(l=>{
+    const c=n(l.cours);if(c==null)return;
+    const e=evaluate(l), pr=n(l.pru), q=Q(l)||0, a=l.achat||{}, v=l.vente||{};
+    const s=e.rules.find(r=>r.k==="sell");
+    if(s&&q>0){let qte=q,prix=c;
+      if(/^Alléger/.test(s.tag)){const m=String(s.txt).match(/<b>(\d+) action/);qte=m?+m[1]:q;}
+      else if(s.tag==="Vendre 1/3")qte=Math.ceil(q/3);
+      if(n(v.ordrePct)&&pr)prix=pr*(1+n(v.ordrePct));else if(n(v.rebond)!=null&&c>=n(v.rebond))prix=n(v.rebond);else if(/Stop/.test(s.tag))prix=c*0.995;
+      add(l,"vente",s.tag,prix,qte);}
+    else if(q>0&&pr&&isAct(l)&&!OJ_STOCK.includes(l.id)&&!l.horizon?.swing?.actif&&c<=pr*0.7) add(l,"vente","Stop −30 % du PRU",c*0.995,q);
+    else{const da=l.dateAchat?.date;
+      if(VENTE_FIXE&&q>0&&pr&&isAct(l)&&!OJ_STOCK.includes(l.id)&&da&&days(da,TODAY)<=3) add(l,"vente","Ordre de revente à préparer dès l'achat (+20 %)",pr*1.2*ojFrais(l),q,"longue");}
+    const b=e.rules.find(r=>r.k==="buy");
+    if(b){const lim=a.limite?.date===TODAY&&n(a.limite.prix)!=null?n(a.limite.prix):null;
+      const prix=lim??(b.tag==="Racheter"?Math.min(c,n(l.rachat?.prix)??c):/^Creux/.test(b.tag)?c:Math.min(c,n(a.prixDerive)??n(a.prix)??c));
+      const qte=/^Creux/.test(b.tag)?(n(l.guetCreux?.qte)||rpNb(l)||cap6(l,prix)):(rpNb(l)||cap6(l,prix));
+      add(l,"achat",b.tag,prix,qte);}
+    else if(renfTxt(l)) add(l,"achat",l.renfort?.suiveur?"Renfort (rebond après −10 %)":"Renfort sous PRU − 10 %",n(l.renfort.prix),rpNb(l)||cap6(l,n(l.renfort.prix)));
+    else if(creuxTxt(l)) add(l,"achat","Renfort (creux d'ETF)",c,rpNb(l));
+    if(bas8Txt(l)) add(l,"arbitrage","Plus bas 8 mois : arbitrage à demander (assurance vie)",null,null);
+  });
+  // vérification des doublons
+  const T=txs?.liste||[], P=(ordresPrep?.liste||[]);
+  const fq=x=>Number(x).toLocaleString("fr-FR",{maximumFractionDigits:4});
+  out.forEach(o=>{const l=lines.find(x=>x.id===o.id)||{};
+    const tj=T.filter(t=>t.id===o.id&&t.type===o.sens&&t.date===TODAY);
+    const pj=P.filter(p=>p.id===o.id&&p.sens===o.sens&&(p.date===TODAY||(p.validite==="longue"&&o.validite==="longue")));
+    const od=o.sens==="achat"?l.achat?.ordre:null;
+    const tr=T.filter(t=>t.id===o.id&&t.type===o.sens&&t.date&&t.date<TODAY&&days(t.date,TODAY)<=5).sort((x,y)=>String(y.date).localeCompare(x.date))[0];
+    if(tj.length){o.st="passe";o.stTxt=`✅ Déjà exécuté aujourd'hui (avis Fortuneo) : ${tj.map(t=>`${fq(t.qte)} à ${eur(+t.prix)}`).join(" + ")}`;}
+    else if(od&&n(od.qte)>0&&(!od.validite||od.validite>=TODAY)){o.st="carnet";o.stTxt=`📋 Déjà au carnet Fortuneo : ${fq(od.qte)} à ${eur(+od.prix)}${od.validite?` (jusqu'au ${fdate(od.validite)})`:""}`;}
+    else if(pj.length){const p=pj[pj.length-1];o.st="prepare";o.prep=p;o.stTxt=`📝 Déjà préparé ${p.date===TODAY?"aujourd'hui":"le "+fdate(p.date)}${p.heure?" à "+p.heure.replace(":","h"):""} : ${p.qte?fq(p.qte):"?"} à ${p.prix!=null?eur(+p.prix):"?"}`;}
+    else if(tr){o.st="recent";o.stTxt=`⚠️ ${o.sens==="achat"?"Acheté":"Vendu"} le ${fdate(tr.date)} (${fq(tr.qte)} à ${eur(+tr.prix)}) : vérifie que ce n'est pas un doublon`;}
+    else o.st="";
+  });
+  const rg={vente:0,achat:1,arbitrage:2};
+  return out.sort((x,y)=>(!!x.st&&x.st!=="recent")-(!!y.st&&y.st!=="recent")||rg[x.sens]-rg[y.sens]||String(x.nom).localeCompare(y.nom,"fr"));
+}
+function openOrdres(){
+  $("#sheetHost").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" id="oj"></div></div>`;
+  $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")$("#sheetHost").innerHTML="";});
+  renderOrdres();
+}
+function renderOrdres(){
+  const box=$("#oj");if(!box)return;
+  const garde={};box.querySelectorAll(".oj-row[data-k]").forEach(r=>{garde[r.dataset.k]={c:r.querySelector("input[type=checkbox]")?.checked,q:r.querySelector(".oj-q")?.value,p:r.querySelector(".oj-p")?.value};});
+  ojListe=ordresDuJour();
+  const aF=ojListe.filter(o=>!o.st||o.st==="recent"), fait=ojListe.filter(o=>o.st&&o.st!=="recent");
+  const SENS={achat:"Achat",vente:"Vente",arbitrage:"Arbitrage"};
+  const row=(o,i)=>{const k=o.id+"|"+o.sens, g=garde[k], ok=!o.st, chk=g?g.c:ok, inp=o.sens!=="arbitrage";
+    return `<div class="oj-row ${o.st&&o.st!=="recent"?"fait":""}" data-k="${esc(k)}" data-i="${i}"><input type="checkbox" ${chk?"checked":""} ${o.st&&o.st!=="recent"?"disabled":""} aria-label="Préparer cet ordre">
+      <div><div class="oj-t"><span class="${o.sens==="vente"?"t-vente":"t-achat"}">${SENS[o.sens]}</span> · ${esc(o.nom)} <span class="env">${esc(o.env||"")}</span></div>
+      <div class="oj-m">${esc(o.motif)} · cours ${eur(o.cours)}${o.validite==="longue"?" · validité la plus longue possible":inp?" · valable la journée":""}</div>
+      ${inp?`<div class="oj-f">Qté <input class="oj-q" inputmode="decimal" value="${esc(g?.q??o.qte??"")}" placeholder="?"> × limite <input class="oj-p" inputmode="decimal" value="${esc(g?.p??(o.prix!=null?String(o.prix).replace(".",","):""))}"> € <span class="oj-mt num"></span></div>`:""}
+      ${o.stTxt?`<div class="oj-st ${o.st==="recent"?"dbl":"ok"}">${esc(o.stTxt)}${o.st==="prepare"?` <button type="button" class="oj-x" data-x="${i}" title="L'ordre n'a finalement pas été passé">retirer</button>`:""}</div>`:""}</div></div>`;};
+  const lien=$("#lienCarnet")?.href&&!$("#lienCarnet").hidden?$("#lienCarnet").href:"";
+  const heureC=lines.filter(l=>l.coursDate===TODAY&&/^\d\d:\d\d$/.test(l.coursHeure||"")).map(l=>l.coursHeure).sort().pop();
+  box.innerHTML=`<h2>Ordres du jour</h2>
+    <p class="nc" style="margin:0;line-height:1.45">Selon les règles de Vigie${heureC?`, cours du robot jusqu'à ${heureC.replace(":","h")}`:""}. Vérifié pour éviter les doublons : avis d'exécution Fortuneo du jour, ordres au carnet notés dans Vigie, ordres déjà préparés ici et achats/ventes des 5 derniers jours. Tu passes les ordres toi-même sur Fortuneo.</p>
+    <div class="oj-h">À passer (${aF.length})</div>
+    ${aF.length?aF.map(o=>row(o,ojListe.indexOf(o))).join(""):`<div class="nc">Aucun nouvel ordre à passer pour l'instant.</div>`}
+    ${fait.length?`<div class="oj-h">Déjà passés ou préparés (${fait.length})</div>${fait.map(o=>row(o,ojListe.indexOf(o))).join("")}`:""}
+    <div class="err" id="oj-err" hidden></div>
+    <div class="actions" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end">
+      <button class="btn" type="button" id="oj-close">Fermer</button>
+      <button class="btn" type="button" id="oj-copy">Copier la liste</button>
+      ${lien?`<a class="btn" href="${esc(lien)}" target="_blank" rel="noopener" style="text-decoration:none">📝 Carnet Fortuneo</a>`:""}
+      <button class="btn primary" type="button" id="oj-ok">Marquer comme préparés</button>
+    </div>`;
+  const num=x=>{const v=parseFloat(String(x||"").replace(/\s/g,"").replace(",","."));return isFinite(v)?v:null;};
+  const maj=()=>{box.querySelectorAll(".oj-row").forEach(r=>{const q=num(r.querySelector(".oj-q")?.value),p=num(r.querySelector(".oj-p")?.value),m=r.querySelector(".oj-mt");if(m)m.textContent=q&&p?"= "+eur(q*p):"";});
+    const nb=[...box.querySelectorAll(".oj-row input[type=checkbox]:checked:not(:disabled)")].length,b=$("#oj-ok");b.textContent=nb?`Marquer comme préparé${nb>1?"s":""} (${nb})`:"Marquer comme préparés";b.disabled=!nb;};
+  box.querySelectorAll("input").forEach(x=>x.addEventListener("input",maj));box.querySelectorAll("input[type=checkbox]").forEach(x=>x.addEventListener("change",maj));maj();
+  const choisis=()=>[...box.querySelectorAll(".oj-row")].filter(r=>{const c=r.querySelector("input[type=checkbox]");return c&&c.checked&&!c.disabled;}).map(r=>({...ojListe[+r.dataset.i],qte:num(r.querySelector(".oj-q")?.value),prix:num(r.querySelector(".oj-p")?.value)}));
+  $("#oj-close").onclick=()=>{$("#sheetHost").innerHTML="";};
+  $("#oj-copy").onclick=async()=>{const L=choisis();const t=(L.length?L:aF).map(o=>`${SENS[o.sens]} ${o.nom} (${o.env})${o.qte?` · ${o.qte} titre(s)`:""}${o.prix!=null?` · limite ${String(o.prix).replace(".",",")} €`:""} · ${o.validite==="longue"?"validité longue":"jour"}`).join("\n");
+    try{await navigator.clipboard.writeText(t);$("#oj-copy").textContent="Copié ✓";}catch{$("#oj-copy").textContent="Copie impossible";}};
+  const ecrire=async liste=>{const err=$("#oj-err");err.hidden=true;
+    if(!db){err.textContent="Synchronisation indisponible : impossible d'enregistrer.";err.hidden=false;return false;}
+    const lim=iso(new Date(Date.now()-30*864e5));
+    try{await db.collection("journal").doc("ordres").set({liste:liste.filter(p=>p.date>=lim||p.validite==="longue"&&p.date>=iso(new Date(Date.now()-90*864e5))),maj:TODAY});return true;}
+    catch(e){err.textContent="Enregistrement impossible : "+(e?.message||e);err.hidden=false;return false;}};
+  $("#oj-ok").onclick=async()=>{const L=choisis();if(!L.length)return;const b=$("#oj-ok");b.disabled=true;b.textContent="Enregistrement…";
+    const h=new Date().toTimeString().slice(0,5);
+    const nv=L.map(o=>({date:TODAY,heure:h,id:o.id,nom:o.nom,env:o.env,sens:o.sens,qte:o.qte,prix:o.prix,validite:o.validite,motif:o.motif}));
+    if(await ecrire([...(ordresPrep?.liste||[]),...nv]))ordresPrep={...(ordresPrep||{}),liste:[...(ordresPrep?.liste||[]),...nv]};
+    renderOrdres();};
+  box.querySelectorAll("[data-x]").forEach(x=>x.onclick=async()=>{const o=ojListe[+x.dataset.x],p=o?.prep;if(!p)return;x.disabled=true;
+    const reste=(ordresPrep?.liste||[]).filter(y=>!(y.id===p.id&&y.sens===p.sens&&y.date===p.date&&y.heure===p.heure));
+    if(await ecrire(reste))ordresPrep={...(ordresPrep||{}),liste:reste};renderOrdres();});
 }
 /* ---- point du jour (marchés et macro-économie) : document « journal/jour » écrit par la tâche de 9h25 ---- */
 let jourOpen=null;  // 12/11/2026 : état replié/déplié mémorisé pour la journée (stockage du navigateur, à défaut en mémoire)
@@ -1151,7 +1265,8 @@ window.addEventListener("pageshow",e=>{if(e.persisted&&typeof window.subscribe==
   window.subscribe=()=>{
     unsubs.forEach(u=>{try{u&&u();}catch{}}); unsubs=[]; clearTimeout(retry);
     // bouton « Ordres préparés Fortuneo » (21/11/2026) : adresse dans journal/liens du dépôt privé (identifiant de compte hors dépôt public)
-    try{unsubs.push(db.collection("journal").doc("liens").onSnapshot(d=>{const u=d.exists?d.data()?.fortuneoCarnet:null;$("#topbar").hidden=!u;if(u)$("#lienCarnet").href=u;},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("liens").onSnapshot(d=>{const u=d.exists?d.data()?.fortuneoCarnet:null;$("#lienCarnet").hidden=!u;if(u)$("#lienCarnet").href=u;},()=>{}));}catch{}
+    try{unsubs.push(db.collection("journal").doc("ordres").onSnapshot(d=>{ordresPrep=d.exists?d.data():null;if($("#oj"))renderOrdres();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("jour").onSnapshot(d=>{jour=d.exists?d.data():null;renderJour();},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("readme").onSnapshot(d=>{const r=d.exists?d.data():null,box=$("#readme");if(!box)return;if(!r||!r.md){box.hidden=true;return;}box.hidden=false;$("#readmeDate").textContent=r.date?`mis à jour le ${fdate(r.date)}`:"";try{$("#readmeBody").innerHTML=window.marked?marked.parse(r.md):`<pre>${esc(r.md)}</pre>`;}catch{$("#readmeBody").innerHTML=`<pre>${esc(r.md)}</pre>`;}},()=>{}));}catch{}
     try{unsubs.push(db.collection("journal").doc("coherence").onSnapshot(d=>{coh=d.exists?d.data():null;renderCoh();},()=>{}));}catch{}
