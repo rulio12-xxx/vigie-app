@@ -41,6 +41,8 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .total{text-align:right}
 .topbar{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .topbar a[hidden]{display:none}
+/* 24/11/2026 : un seul bouton en haut ; le lien vers le carnet Fortuneo est dans la fiche « Préparer les ordres » */
+#lienCarnet{display:none!important}
 .topbar button{font:inherit;cursor:pointer}
 .oj-row{display:grid;grid-template-columns:24px 1fr;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
 .oj-row input[type=checkbox]{width:18px;height:18px;margin-top:2px}
@@ -308,7 +310,7 @@ fieldset{border-radius:16px}
 
 
 <div class="wrap">
-  <div class="topbar" id="topbar"><button type="button" id="btnOrdres" class="topbtn" onclick="openOrdres()" title="Ordres à passer aujourd'hui selon les règles, en écartant ceux déjà exécutés, au carnet ou déjà préparés">✅ Préparer les ordres</button><a id="lienCarnet" target="_blank" rel="noopener" hidden>📝 Ordres préparés Fortuneo</a></div>
+  <div class="topbar" id="topbar"><button type="button" id="btnOrdres" class="topbtn" onclick="openOrdres()" title="Ordres à passer aujourd'hui selon les règles, en écartant ceux déjà exécutés, au carnet ou déjà préparés">✅ Préparer les ordres</button><a id="lienCarnet" target="_blank" rel="noopener" hidden>📝 Carnet Fortuneo</a></div>
   <header>
     <div>
       <div class="hdl"><div><h1>Vigie Patrimoine</h1><div class="sub" id="today"></div></div><div class="hdb"><button type="button" class="btnRelever" id="btnReleverHaut" onclick="vigieRelever()" title="Lance le robot (2-3 min, sans IA)">↻ Rafraîchir les cours</button></div></div>
@@ -758,7 +760,7 @@ function renderOrdres(){
   const lien=$("#lienCarnet")?.href&&!$("#lienCarnet").hidden?$("#lienCarnet").href:"";
   const heureC=lines.filter(l=>l.coursDate===TODAY&&/^\d\d:\d\d$/.test(l.coursHeure||"")).map(l=>l.coursHeure).sort().pop();
   box.innerHTML=`<h2>Ordres du jour</h2>
-    <p class="nc" style="margin:0;line-height:1.45">Selon les règles de Vigie${heureC?`, cours du robot jusqu'à ${heureC.replace(":","h")}`:""}. Vérifié pour éviter les doublons : avis d'exécution Fortuneo du jour, ordres au carnet notés dans Vigie, ordres déjà préparés ici et achats/ventes des 5 derniers jours. Tu passes les ordres toi-même sur Fortuneo.</p>
+    <p class="nc" style="margin:0;line-height:1.45">Selon les règles de Vigie${heureC?`, cours du robot jusqu'à ${heureC.replace(":","h")}`:""}. Vérifié pour éviter les doublons : avis d'exécution Fortuneo du jour, ordres au carnet notés dans Vigie, ordres déjà préparés ici et achats/ventes des 5 derniers jours. Tu passes les ordres toi-même sur Fortuneo (bouton « Ouvrir le carnet Fortuneo » en bas).</p>
     <div class="oj-h">À passer (${aF.length})</div>
     ${aF.length?aF.map(o=>row(o,ojListe.indexOf(o))).join(""):`<div class="nc">Aucun nouvel ordre à passer pour l'instant.</div>`}
     ${fait.length?`<div class="oj-h">Déjà passés ou préparés (${fait.length})</div>${fait.map(o=>row(o,ojListe.indexOf(o))).join("")}`:""}
@@ -766,7 +768,7 @@ function renderOrdres(){
     <div class="actions" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end">
       <button class="btn" type="button" id="oj-close">Fermer</button>
       <button class="btn" type="button" id="oj-copy">Copier la liste</button>
-      ${lien?`<a class="btn" href="${esc(lien)}" target="_blank" rel="noopener" style="text-decoration:none">📝 Carnet Fortuneo</a>`:""}
+      ${lien?`<a class="btn" href="${esc(lien)}" target="_blank" rel="noopener" style="text-decoration:none">📝 Ouvrir le carnet Fortuneo ↗</a>`:""}
       <button class="btn primary" type="button" id="oj-ok">Marquer comme préparés</button>
     </div>`;
   const num=x=>{const v=parseFloat(String(x||"").replace(/\s/g,"").replace(",","."));return isFinite(v)?v:null;};
