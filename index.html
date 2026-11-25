@@ -956,7 +956,13 @@ function render(){
   if(filterBx&&!filterDiv) shown.sort((A,B)=>bxN(B.l)-bxN(A.l)||String(A.l.nom).localeCompare(B.l.nom,"fr")); // filtre baisses : niveau le plus élevé en tête
   if(filterDiv) shown.sort((A,B)=>(divYield(B.l)??0)-(divYield(A.l)??0)); // filtre dividendes : meilleur rendement en tête
   const gain=l=>{const c=n(l.cours),p=n(l.pru);return Q(l)>0&&p&&c!=null&&c>p?c/p-1:null;}; // lignes détenues en plus-value : en tête, meilleur gain d'abord
-  if(!filterDiv&&!filterBx) shown.sort((A,B)=>{const a=gain(A.l),b=gain(B.l);if(a!=null||b!=null)return (b!=null)-(a!=null)||(b??0)-(a??0);return grp(A.e)-grp(B.e)||(held(A.l)-held(B.l))||cmp(key(A),key(B))||String(A.l.nom).localeCompare(B.l.nom,"fr");});
+  // ordre (25/11/2026) : lignes détenues, du meilleur gain à la plus grosse perte ; puis non achetées, la plus proche de son seuil d'achat en tête
+  const own=l=>Q(l)>0, pv=l=>{const c=n(l.cours),p=n(l.pru);return own(l)&&p&&c!=null?c/p-1:null;};
+  const bk=l=>{const c=n(l.cours),p=n(l.achat?.prixDerive)??n(l.achat?.prix);return c==null||!p?Infinity:(c-p)/p;};
+  if(!filterDiv&&!filterBx) shown.sort((A,B)=>{const oa=own(A.l),ob=own(B.l);if(oa!==ob)return ob-oa;
+    if(oa){const a=pv(A.l),b=pv(B.l);if(a!=null||b!=null)return (b!=null)-(a!=null)||(b??0)-(a??0);}
+    else{const r=cmp(bk(A.l),bk(B.l));if(r)return r;}
+    return String(A.l.nom).localeCompare(B.l.nom,"fr");});
   // opération pic / rachat en cours (horizon.swing.actif, règle du 07/11/2026) : bande noire, toujours affichée en dernière ligne, quels que soient les filtres
   const isSw=l=>!!l.horizon?.swing?.actif;
   shown=shown.filter(x=>!isSw(x.l)).concat(ev.filter(x=>isSw(x.l)));
