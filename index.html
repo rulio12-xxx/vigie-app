@@ -309,6 +309,7 @@ fieldset{border-radius:16px}
   <div class="synth" id="synth"></div>
   <details class="synth tx" id="carteBox"><summary>Carte du portefeuille</summary><div id="carte"></div></details>
   <details class="synth tx" id="stratBox"><summary>Stratégie : règles et poids (21/11/2026)</summary>
+    <p class="nc" id="themesPea" style="white-space:normal;line-height:1.45"></p>
     <p class="nc" style="white-space:normal;line-height:1.45">Règles retenues par plans d'expérience (analyse de variance, portefeuille simulé en rotation, 138 actions, 05/2023 → 11/2026, frais compris). Part de la variation du rendement expliquée par chaque levier ; les petits facteurs non significatifs ont été retirés du prix d'achat.</p>
     <ol style="margin:6px 0 0;padding-left:20px;white-space:normal;line-height:1.4"><li style="margin:4px 0"><b>Filtre de valeur (PER publié)</b> · 35-44 %<br><span class="nc">6,5 à 10 ; 10 à 15 si PEG &lt; 0,5 et croissance 5-25 %</span></li><li style="margin:4px 0"><b>Nombre de lignes</b> · 6 %<br><span class="nc">≈ 16 (6 % par ligne)</span></li><li style="margin:4px 0"><b>Gain de vente</b> · 4-6 %<br><span class="nc">+20 %, ordre préparé dès l'achat</span></li><li style="margin:4px 0"><b>Critère de marché</b> · 4 %<br><span class="nc">nouveaux achats seulement en creux : CAC à −8 % de son plus haut 3 mois</span></li><li style="margin:4px 0"><b>Repli exigé, Higgons, 😈</b> · 2-3 %<br><span class="nc">seuil d'achat Higgons ; 😈 exclut</span></li><li style="margin:4px 0"><b>Stop des pertes</b> · 2 %<br><span class="nc">−30 % du PRU</span></li><li style="margin:4px 0"><b>Retirés du prix d'achat</b> · ≈ 0<br><span class="nc">Lynch (bonus), survente, volatilité, saison, dynamique 12 mois, risque de krach : non significatifs</span></li></ol></details>
   <details class="synth tx" id="cohBox" hidden><summary>Notes à vérifier (réputation) <span class="num" id="cohN"></span></summary><div id="coh"></div></details>
@@ -385,6 +386,7 @@ function evaluate(l){
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
     else if(c<=p&&isAct(l)&&n(l.higgons?.note)!=null&&n(l.higgons.note)<=2&&!a.manuel&&!(l.lynch?.etoilePeg||l.lynch?.etoileDividende))
       r={cls:"p-gone",tag:"Pari non retenu",k:null,rk:3,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais note ${l.higgons.note}★ sans étoile de Lynch : pas de signal d'achat (règle du 08/11/2026)`};
+    else if(c<=p&&isAct(l)&&a.plafondTheme) r={cls:"p-gone",tag:"Plafond du thème",k:null,rk:3,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais ${esc(a.plafondTheme)} : pas d'achat`};
     else if(l.ordre2&&isAct(l)) r={cls:l.ordre2.alerteBpa?"p-warn":"p-buy",tag:l.ordre2.alerteBpa?"Achat 2e ordre ⚠":"Achat 2e ordre",k:"buy2",rk:1,txt:`${pct(l.ordre2.ecart).replace("-","−")} sous son plus haut 12 mois (${eur1(+l.ordre2.plusHaut12)})${l.ordre2.per!=null?` · PER publié ${String(l.ordre2.per).replace(".",",")}`:""} · aucun achat de 1er ordre : liquidités à investir (règle du 25/11/2026, 8 lignes de 2e ordre au plus)${l.ordre2.alerteBpa?` · <b>⚠ BPA attendu ${l.ordre2.alerteBpa.annee} ${eur(+l.ordre2.alerteBpa.attendu)} (${pct(l.ordre2.alerteBpa.ecart).replace("-","−")} vs ${eur(+l.ordre2.alerteBpa.publie)} publié) : vérifier la thèse, piège de valeur possible</b>`:""}`};
     else if(c<=p&&isAct(l)&&!a.manuel&&a.horsFiltre) r={cls:"p-gone",tag:"Hors filtre PER",k:null,rk:3,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais ${esc(a.horsFiltre)} : pas d'achat (règle du 21/11/2026)`};
     else if(c<=p&&isAct(l)&&!a.manuel&&a.attenteCreux) r={cls:"p-warn",tag:"Attente d'un creux",k:"soonbuy",rk:2,txt:`Cours sous le seuil de <b>${eur1(p)}</b> · ${esc(a.attenteCreux)}`};
@@ -466,6 +468,7 @@ function stars(l){
   const k=Math.min(5,Math.round(s));
   return `<span class="stars" title="${/^Fonds/.test(l.higgons?.grille||"")?"Note fonds (12 mois face à l'indice)":"Note Quality Value (Higgons)"} : ${k}/5" aria-label="Note Higgons ${k} sur 5">${"★".repeat(k)}<span class="off">${"★".repeat(5-k)}</span></span>`;
 }const isIm=l=>l.secteur==="Real Estate"||/^(Residential Construction|Building Materials|Building Products|Home Improvement|Lumber)/.test(l.industrie||"")||/immobili|fonci[eè]re/i.test(l.nom||""); // filtre « Immobilier » (25/11/2026) : foncières, promoteurs, constructeurs de maisons, matériaux ; BTP et concessions exclus
+const themeOf=l=>{const i=l.industrie||"",s=l.secteur||"";if(s==="Real Estate"||/^(Residential Construction|Building Materials|Building Products|Home Improvement|Lumber|Engineering & Construction)/.test(i))return"Bâtiment";if(/^Oil/.test(i)||l.quant?.facteurs?.petroleSensible)return"Pétrole";if(s==="Technology"||s==="Communication Services")return"Technologie";return null;}; // garde-fou 25 % par thème (25/11/2026)
 const isPe=l=>!!(l.quant?.facteurs?.petroleSensible||/\b(brent|wti|oil|pétrole)\b/i.test(l.nom||"")); // filtre « Pétrole » (11/11/2026)
 const isIa=l=>!!(l.quant?.facteurs?.iaSensible||/semiconduct|nasdaq|intelligence artificielle|artificial intelligence|\bAI\b|nvidia|anthropic/i.test(l.nom||"")); // filtre « IA » (19/11/2026) : sensibles à l'ETF IA (régression 12 mois) + supports IA par leur nom
 const isOr=l=>!!(l.quant?.facteurs?.orSensible||/gold|\bor physique/i.test(l.nom||"")); // filtre « Or » (08/11/2026) : sensibles à l'or + l'or lui-même
@@ -833,6 +836,9 @@ function fixBars(){
 }
 let fixT=null;addEventListener("resize",()=>{clearTimeout(fixT);fixT=setTimeout(fixBars,150);});
 function render(){
+  {const pea=lines.filter(l=>l.env==="PEA"&&Q(l)>0&&n(l.cours)),tot=pea.reduce((t,l)=>t+Q(l)*l.cours,0)+(n(especes?.PEA)||0),el=document.getElementById("themesPea");
+   if(el&&tot>0){const g={};pea.forEach(l=>{const t=themeOf(l);if(t)g[t]=(g[t]||0)+Q(l)*l.cours;});
+     el.innerHTML="<b>Garde-fou de concentration</b> (25/11/2026) : chaque thème ≤ 25 % du PEA. Aujourd'hui : "+["Bâtiment","Pétrole","Technologie"].map(t=>{const v=(g[t]||0)/tot;return `${t} <b style="color:${v>0.25?"var(--sell)":v>0.19?"var(--warn,#c80)":"inherit"}">${(v*100).toFixed(1).replace(".",",")} %</b>`;}).join(" · ");}}
   $("#today").textContent=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   const ev=lines.map(l=>({l,e:evaluate(l)}));
   // au moins une ligne « proche » (07/11/2026) : si aucune n'est sous le seuil de 3 %, la plus proche de son prix d'achat (non détenue)
