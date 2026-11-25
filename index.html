@@ -51,6 +51,7 @@ h1{font:800 24px/1 var(--f-display);font-stretch:78%;letter-spacing:.01em;margin
 .sig .n{font:600 20px/1 var(--f-num)}
 .sig .t{font-size:11px;line-height:1.2;color:var(--muted)}
 .sig[data-k="buy"] .n{color:var(--buy)} .sig[data-k="sell"] .n{color:var(--sell)}
+.sig[data-k="buy2"] .n{color:var(--buy);opacity:.85} .sig[data-k="buy2"][aria-pressed="true"]{border-color:var(--buy);box-shadow:inset 0 0 0 1px var(--buy);background:var(--buy-soft)}
 .sig[data-k="buy"][aria-pressed="true"]{border-color:var(--buy);box-shadow:inset 0 0 0 1px var(--buy);background:var(--buy-soft)}
 .sig[data-k="sell"][aria-pressed="true"]{border-color:var(--sell);box-shadow:inset 0 0 0 1px var(--sell);background:var(--sell-soft)}
 .sig[data-k="drop"] .n{color:var(--drop)} .sig[data-k="soonbuy"] .n{color:var(--buy);opacity:.75} .sig[data-k="soonsell"] .n{color:var(--sell);opacity:.75} .sig[data-k="expired"] .n{color:var(--gone)}
@@ -384,7 +385,7 @@ function evaluate(l){
     else if(dl!=null&&dl<0) r={cls:"p-gone",tag:"Délai dépassé",k:"expired",rk:1,txt:`Achat ≤ <b>${eur1(p)}</b> prévu avant le ${fdate(a.avant)} — à réévaluer`};
     else if(c<=p&&isAct(l)&&n(l.higgons?.note)!=null&&n(l.higgons.note)<=2&&!a.manuel&&!(l.lynch?.etoilePeg||l.lynch?.etoileDividende))
       r={cls:"p-gone",tag:"Pari non retenu",k:null,rk:3,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais note ${l.higgons.note}★ sans étoile de Lynch : pas de signal d'achat (règle du 08/11/2026)`};
-    else if(l.ordre2&&isAct(l)) r={cls:"p-buy",tag:"Achat 2e ordre",k:"buy",rk:0,txt:`${pct(l.ordre2.ecart).replace("-","−")} sous son plus haut 12 mois (${eur1(+l.ordre2.plusHaut12)})${l.ordre2.per!=null?` · PER publié ${String(l.ordre2.per).replace(".",",")}`:""} · aucun achat de 1er ordre : liquidités à investir (règle du 25/11/2026, 8 lignes de 2e ordre au plus)`};
+    else if(l.ordre2&&isAct(l)) r={cls:"p-buy",tag:"Achat 2e ordre",k:"buy2",rk:1,txt:`${pct(l.ordre2.ecart).replace("-","−")} sous son plus haut 12 mois (${eur1(+l.ordre2.plusHaut12)})${l.ordre2.per!=null?` · PER publié ${String(l.ordre2.per).replace(".",",")}`:""} · aucun achat de 1er ordre : liquidités à investir (règle du 25/11/2026, 8 lignes de 2e ordre au plus)`};
     else if(c<=p&&isAct(l)&&!a.manuel&&a.horsFiltre) r={cls:"p-gone",tag:"Hors filtre PER",k:null,rk:3,txt:`Cours sous le seuil de <b>${eur1(p)}</b>, mais ${esc(a.horsFiltre)} : pas d'achat (règle du 21/11/2026)`};
     else if(c<=p&&isAct(l)&&!a.manuel&&a.attenteCreux) r={cls:"p-warn",tag:"Attente d'un creux",k:"soonbuy",rk:2,txt:`Cours sous le seuil de <b>${eur1(p)}</b> · ${esc(a.attenteCreux)}`};
     else if(c<=p) r={cls:"p-buy",tag:"Acheter",k:"buy",rk:0,txt:`Cours sous le seuil de <b>${eur1(p)}</b>${dl!=null?` · reste ${dl} j`:""}${limTxt(a)}`};
@@ -849,9 +850,9 @@ function render(){
   const inScope=({l,e})=>(!filterMine||(filterMine==="oui")===mine({l,e}))&&(!filterSv||isSv(l))&&(!filterType||typeOf(l)===filterType)&&(!filterEnv||l.env===filterEnv)&&divOk(l)&&(!filterBx||bxN(l)>0)&&(!filterStar||starN(l)===filterStar)&&(!filterIa||isIa(l))&&(!filterLy||(filterLy==="peg"?l.lynch?.etoilePeg:l.lynch?.etoileDividende))&&(!filterOr||isOr(l))&&(!filterPe||isPe(l));
   // signaux (dans le périmètre type + enveloppe)
   const isHg=l=>{const h=n(l.higgons?.seuil),c=n(l.cours);return h>0&&c!=null&&c<=h;};
-  const cnt={sell:0,buy:0,soonsell:0,soonbuy:0,drop:0,hg:0};
+  const cnt={sell:0,buy:0,buy2:0,soonsell:0,soonbuy:0,drop:0,hg:0};
   ev.filter(inScope).forEach(({l,e})=>{const ks=new Set(e.rules.map(r=>r.k).filter(Boolean));ks.forEach(k=>{if(k in cnt)cnt[k]++;});if(isDrop(l))cnt.drop++;if(isHg(l))cnt.hg++;});
-  const labels={buy:"À acheter",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU ; ETF : avec un creux ; action : hors forte baisse)",soonbuy:`Proches de l'achat (< ${String(NEAR_BUY*100).replace('.',',')} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,hg:"Sous le seuil Higgons"};
+  const labels={buy:"À acheter",buy2:"Achat 2e ordre (sans creux : filtre PER et −40 % du plus haut 12 mois, à défaut d'achat de 1er ordre)",sell:"À vendre (objectif ou stop)",drop:"Sous le seuil violet (−10 % du PRU ; ETF : avec un creux ; action : hors forte baisse)",soonbuy:`Proches de l'achat (< ${String(NEAR_BUY*100).replace('.',',')} % ou ${SOON_DAYS} j)`,soonsell:`Proches de la vente (< ${NEAR_PCT*100} % ou ${SOON_DAYS} j)`,hg:"Sous le seuil Higgons"};
   $("#signals").innerHTML=Object.keys(cnt).map(k=>`<button class="sig" type="button" data-k="${k}" aria-pressed="${filterSig===k}"><span class="n">${cnt[k]}</span><span class="t">${labels[k]}</span></button>`).join("");
   // types d'actifs + bouton tout réafficher
   $("#types").innerHTML=TYPES.filter(t=>lines.some(l=>typeOf(l)===t)).map(t=>`<button class="chip" type="button" data-type="${t}" aria-pressed="${filterType===t}">${t} <span class="num">${lines.filter(l=>typeOf(l)===t).length}</span></button>`).join("")+
@@ -943,7 +944,7 @@ function render(){
     const p=n(l.achat?.prixDerive)??n(l.achat?.prix);return p==null?Infinity:(c-p)/p;};
   const cmp=(x,y)=>x===y?0:x<y?-1:1;
   // ordre d'affichage : à vendre · à acheter · bientôt à vendre · bientôt à acheter · délai dépassé · en veille · à configurer
-  const grp=e=>{const ks=e.rules.map(r=>r.k);return ks.includes("sell")?0:ks.includes("buy")?1:ks.includes("soonsell")?2:ks.includes("soonbuy")?3:ks.includes("expired")?4:e.rank===5?6:5;};
+  const grp=e=>{const ks=e.rules.map(r=>r.k);return ks.includes("sell")?0:ks.includes("buy")?1:ks.includes("buy2")?1.5:ks.includes("soonsell")?2:ks.includes("soonbuy")?3:ks.includes("expired")?4:e.rank===5?6:5;};
   if(filterBx&&!filterDiv) shown.sort((A,B)=>bxN(B.l)-bxN(A.l)||String(A.l.nom).localeCompare(B.l.nom,"fr")); // filtre baisses : niveau le plus élevé en tête
   if(filterDiv) shown.sort((A,B)=>(divYield(B.l)??0)-(divYield(A.l)??0)); // filtre dividendes : meilleur rendement en tête
   const gain=l=>{const c=n(l.cours),p=n(l.pru);return Q(l)>0&&p&&c!=null&&c>p?c/p-1:null;}; // lignes détenues en plus-value : en tête, meilleur gain d'abord
