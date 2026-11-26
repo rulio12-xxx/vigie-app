@@ -820,11 +820,11 @@ function renderJour(){
   const hsT=hl.length?`<h3>Plus fortes hausses du ${fdate(j.hausses.date)}</h3><ul>${hl.map(ligV).join("")}</ul>`:"";
   const bsT=bl.length?`<h3>Plus fortes baisses du ${fdate(j.baisses.date)}</h3><ul>${bl.map(x=>`<li><b>${esc(x.nom||"")}</b> ${num(x.var)} % · ${num(x.cours)} €${x.note!=null?` · ${x.note}★`:""}${n(x.seuil)>0?` · seuil Higgons ${num(x.seuil)} €${x.cours<=x.seuil?" (sous le seuil)":""}`:""}${x.detenu?" · <b>détenue</b>":""}</li>`).join("")}</ul>`:"";
   /* 26/11/2026 : chance de vente du jour (robot, scripts/appliquer.py chances_vente) */
-  const vt=j.ventes, vl=Array.isArray(vt?.liste)?vt.liste:[], pcV=p=>p>=0.995?"100 %":p<0.01?"< 1 %":Math.round(p*100)+" %";
+  const vt=j.ventes, vl=Array.isArray(vt?.liste)?vt.liste.filter(x=>n(x.p)>0.01):[] /* 26/11/2026 : seulement au-dessus de 1 % (demande de Rulio12) */, pcV=p=>p>=0.995?"100 %":p<0.01?"< 1 %":Math.round(p*100)+" %";
   const tyV={ordre:"ordre",plan:"plan Vigie",rebond:"vente sur rebond",stop:"stop"};
-  const vtop=vl.slice(0,8), vrest=vl.length-vtop.length;
+  const vtop=vl;
   const liV=x=>`<li><b>${esc(x.nom||"")}</b> <b class="${x.p>=0.3?"nr":""}">${pcV(x.p)}</b> · ${esc(tyV[x.type]||x.type)} ${num(x.prix)} € · cours ${num(x.cours)} € (${x.ecart>0?"+":""}${num(x.ecart*100,1)} %)</li>`;
-  const vtT=vl.length?`<h3>Chance de vente ${vt.seance==="en cours"?"d'ici la clôture":"à la prochaine séance"}</h3><ul>${vtop.map(liV).join("")}</ul>${vrest>0?`<details class="src"><summary>${vrest} autre${vrest>1?"s":""} vente${vrest>1?"s":""} prévue${vrest>1?"s":""}, moins probable${vrest>1?"s":""}</summary><ul>${vl.slice(8).map(liV).join("")}</ul></details>`:""}<div class="src">Méthode : ${esc(vt.methode||"")}${vt.heure?` · calcul de ${esc(vt.heure)}`:""}.</div>`:"";
+  const vtT=vl.length?`<h3>Chance de vente ${vt.seance==="en cours"?"d'ici la clôture":"à la prochaine séance"}</h3><ul>${vtop.map(liV).join("")}</ul><div class="src">Méthode : ${esc(vt.methode||"")}${vt.heure?` · calcul de ${esc(vt.heure)}`:""}.</div>`:"";
   el.innerHTML=`<details class="jour" ${open?"open":""}><summary><span class="jt">Point du jour</span>${rk}${mkB}<span class="jh">${esc(j.titre||"")}</span><span class="jd">${fdate(j.date)}${j.heure?`<span class="jhr"> ${esc(j.heure)}</span>`:""}${today?"":' <span class="old">pas d\'édition aujourd\'hui</span>'}</span></summary>
     ${vtT}${hsT}${bsT}${rkT}${sec("Macro-économie",j.macro)}${sec("Marchés",j.marches)}${sec("Tes valeurs concernées",j.impacts)}${sec("À surv.",j.agenda)}${src}
 </details>`;
