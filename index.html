@@ -1074,7 +1074,7 @@ function render(){
   const rowP=x=>{const e=x.e,vs=n(especes?.versements?.[e]);if(!vs)return null;const c=cash(e),tot=c+x.a.v,g=tot-vs;
     const ct=lines.filter(l=>l.env===e&&Q(l)>0&&n(l.cours)&&l.horizon?.type==="court").reduce((s,l)=>s+Q(l)*l.cours,0);
     const pc=tot?c/tot:0,pk=tot?ct/tot:0,f=v=>(v*100).toLocaleString("fr-FR",{maximumFractionDigits:1})+" %";
-    const info=[`espèces ${eur(c,0)} (${pc>0.05?`<b class="neg">${f(pc)} &gt; 5 %</b>`:f(pc)})`].filter(Boolean).join(" · "); // part des paris retirée de la ligne (23/11/2026, demande de l'utilisateur)
+    const info=[`espèces ${eur(c,0)} (${pc>0.05?`<b class="neg">${f(pc)}</b> &gt; 5 %`:f(pc)})`].filter(Boolean).join(" · "); // part des paris retirée de la ligne (23/11/2026, demande de l'utilisateur)
     return `<tr class="tot"><td>${esc(e)} · gain</td><td>${eur(tot,0)}</td><td class="${g>=0?"pos":"neg"}">${g>=0?"+":"−"}${eur(Math.abs(g),0)}</td><td class="${g>=0?"pos":"neg"}">${pct(g/vs)}</td><td class="nc">titres + espèces &amp; ${eur(vs,0)} versés</td></tr>`
       +rowS(`${esc(e)} · titres`,x.a,"",`investies · ${info}`);};
   const totA=(()=>{const a=agg(lines);return {...a,v:a.v+cashT};})();
